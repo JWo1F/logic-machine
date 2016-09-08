@@ -8,18 +8,16 @@ import handlers from './handlers';
 
 export default function logicMachine(logic) {
   const [type, ...array] = logic;
-  const plain = [];
+  const method = (type == 'and' ? 'every' : 'some');
 
-  array.forEach(item => {
+  return array[method](item => {
     if(Array.isArray(item)) {
-      plain.push(logicMachine(item));
+      return logicMachine(item);
     } else {
       const handler = handlers[item.operator];
 
-      if(handler) plain.push(handler(item.expected, item.value));
-      else plain.push(false);
+      if(handler) return handler(item.expected, item.value);
+      else return false;
     }
   });
-
-  return type == 'and' ? plain.every(item => !!item) : plain.some(item => !!item);
 }
