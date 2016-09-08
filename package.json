@@ -1,0 +1,35 @@
+{
+  "name": "logic-machine",
+  "version": "0.0.1",
+  "description": "A logic machine for JS",
+  "main": "bundle.js",
+  "scripts": {
+    "test": "npm run build; tap ./tests/index.js",
+    "build": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JWo1F/logic-machine.git"
+  },
+  "keywords": [
+    "logic",
+    "machine",
+    "state",
+    "automation",
+    "finite"
+  ],
+  "author": "JWo1F",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/JWo1F/logic-machine/issues"
+  },
+  "homepage": "https://github.com/JWo1F/logic-machine#readme",
+  "devDependencies": {
+    "babel-core": "^6.14.0",
+    "babel-loader": "^6.2.5",
+    "babel-plugin-transform-es2015-modules-umd": "^6.12.0",
+    "babel-preset-es2015": "^6.14.0",
+    "tap": "^7.1.0",
+    "webpack": "^1.13.2"
+  }
+}
