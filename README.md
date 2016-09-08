@@ -28,6 +28,26 @@ var src = [
 console.log(logic(src)); // true
 ```
 
+operators
+=========
+
+Logic machine has some operators:
+
+* **eq**: *value* equals *expected*
+* **neq**: *value* not equals *expected*
+* **neq**: *value* not equals *expected*
+* **gt**: *value* greaters than *expected*
+* **gte**: *value* greaters than or equals *expected*
+* **lt**: *value* lowers than *expected*
+* **lte**: *value* lowers than or equals *expected*
+* **contain**: *value* string contains *expected* string
+* **notContain**: *value* string not contains *expected* string
+* **startWith**: *value* string starts with *expected* string
+* **endWith**: *value* string ends with *expected* string
+* **regexp**: *value* string matches *expected* (as a regular expression)
+* **includes**: *value* (as an array) includes *expected* (as a string)
+* **nincludes**: *value* (as an array) not includes *expected* (as a string)
+
 install
 =======
 
