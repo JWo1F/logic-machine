@@ -28,6 +28,27 @@ var src = [
 console.log(logic(src)); // true
 ```
 
+```js
+var logic = require('logic-machine');
+
+var src = [
+  'or', // one is true
+  { expected: 7, operator: 'gt', value: 5 }, // false
+  { expected: 3, operator: 'eq', value: 5 }, // false
+  
+  // true (by default, some of the array)
+  { expected: 5, operator: 'eq', value: [4,5,6] },
+  
+  // true (arr is [{ value: 4, result: false }, { value: 5, result: true }, { value: 6, result: false }])
+  { expected: 5, operator: 'eq', value: [4,5,6], getResult: arr => !!arr[1].result },
+
+  // false (arr is [{ value: 4, result: false }, { value: 5, result: true }, { value: 6, result: false }])
+  { expected: 5, operator: 'eq', value: [5,4,6], getResult: arr => !!arr[1].result },
+];
+
+console.log(logic(src)); // true
+```
+
 operators
 =========
 

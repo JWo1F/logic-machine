@@ -16,8 +16,20 @@ export default function logicMachine(logic) {
     } else {
       const handler = handlers[item.operator];
 
-      if(handler) return handler(item.expected, item.value);
-      else return false;
+      if(Array.isArray(item.value)) {
+        const result = item.value.map(value => {
+          return { value, result: handler ? handler(item.expected, value) : false };
+        });
+
+        return (item.getResult || defaultComparisor)(result);
+      } else {
+        if(handler) return handler(item.expected, item.value);
+        else return false;
+      }
     }
   });
+}
+
+function defaultComparisor(arr) {
+  return arr.some(v => !!v.result);
 }

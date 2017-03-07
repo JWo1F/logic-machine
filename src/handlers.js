@@ -19,13 +19,5 @@ function escapeRegExp(str) {
 }
 
 function toString(item) {
-  if(Array.isArray(item)) {
-    if(item.length == 1) {
-      return item[0];
-    } else {
-      return '';
-    }
-  }
-
   return item || '';
 }
