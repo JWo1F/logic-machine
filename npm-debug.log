@@ -1,0 +1,117 @@
+0 info it worked if it ends with ok
+1 verbose cli [ '/usr/bin/node', '/usr/bin/npm', 'publish' ]
+2 info using npm@3.10.10
+3 info using node@v6.10.0
+4 verbose publish [ '.' ]
+5 silly cache add args [ '.', null ]
+6 verbose cache add spec .
+7 silly cache add parsed spec Result {
+7 silly cache add   raw: '.',
+7 silly cache add   scope: null,
+7 silly cache add   escapedName: null,
+7 silly cache add   name: null,
+7 silly cache add   rawSpec: '.',
+7 silly cache add   spec: '/home/jwo1f/logic-machine',
+7 silly cache add   type: 'directory' }
+8 verbose addLocalDirectory /home/jwo1f/.npm/logic-machine/0.2.0/package.tgz not in flight; packing
+9 verbose correctMkdir /home/jwo1f/.npm correctMkdir not in flight; initializing
+10 info lifecycle logic-machine@0.2.0~prepublish: logic-machine@0.2.0
+11 silly lifecycle logic-machine@0.2.0~prepublish: no script for prepublish, continuing
+12 verbose tar pack [ '/home/jwo1f/.npm/logic-machine/0.2.0/package.tgz',
+12 verbose tar pack   '/home/jwo1f/logic-machine' ]
+13 verbose tarball /home/jwo1f/.npm/logic-machine/0.2.0/package.tgz
+14 verbose folder /home/jwo1f/logic-machine
+15 verbose addLocalTarball adding from inside cache /home/jwo1f/.npm/logic-machine/0.2.0/package.tgz
+16 verbose correctMkdir /home/jwo1f/.npm correctMkdir not in flight; initializing
+17 silly cache afterAdd logic-machine@0.2.0
+18 verbose afterAdd /home/jwo1f/.npm/logic-machine/0.2.0/package/package.json not in flight; writing
+19 verbose correctMkdir /home/jwo1f/.npm correctMkdir not in flight; initializing
+20 verbose afterAdd /home/jwo1f/.npm/logic-machine/0.2.0/package/package.json written
+21 silly publish { name: 'logic-machine',
+21 silly publish   version: '0.2.0',
+21 silly publish   description: 'A logic machine for JS',
+21 silly publish   main: 'bundle.js',
+21 silly publish   scripts:
+21 silly publish    { test: 'npm run build; tap ./tests/index.js',
+21 silly publish      build: 'webpack' },
+21 silly publish   repository:
+21 silly publish    { type: 'git',
+21 silly publish      url: 'git+https://github.com/JWo1F/logic-machine.git' },
+21 silly publish   keywords: [ 'logic', 'machine', 'state', 'automation', 'finite' ],
+21 silly publish   author: { name: 'JWo1F' },
+21 silly publish   license: 'MIT',
+21 silly publish   bugs: { url: 'https://github.com/JWo1F/logic-machine/issues' },
+21 silly publish   homepage: 'https://github.com/JWo1F/logic-machine#readme',
+21 silly publish   devDependencies:
+21 silly publish    { 'babel-core': '^6.14.0',
+21 silly publish      'babel-loader': '^6.2.5',
+21 silly publish      'babel-plugin-add-module-exports': '^0.2.1',
+21 silly publish      'babel-plugin-transform-es2015-modules-umd': '^6.12.0',
+21 silly publish      'babel-preset-es2015': '^6.14.0',
+21 silly publish      tap: '^7.1.0',
+21 silly publish      webpack: '^1.13.2' },
+21 silly publish   readme: 'Logic machine\r\n=============\r\n\r\nA logic machine for JS\r\n\r\nexample\r\n=======\r\n\r\n```js\r\nvar logic = require(\'logic-machine\');\r\n\r\nvar src = [\r\n  \'or\', // one is true\r\n  { expected: 7, operator: \'gt\', value: 5 }, // false\r\n  { expected: 3, operator: \'eq\', value: 5 }, // false\r\n  [\r\n    \'and\', // all is true\r\n    { expected: 6, operator: \'lt\', value: 5 }, // true\r\n    { expected: 5, operator: \'lte\', value: 5 }, // true\r\n    [\r\n      \'or\', // one is true\r\n      { expected: 5, operator: \'lt\', value: 5 }, // false\r\n      { expected: 5, operator: \'lte\', value: 5 }, // true\r\n    ] // true\r\n  ] // true\r\n];\r\n\r\nconsole.log(logic(src)); // true\r\n```\r\n\r\n```js\r\nvar logic = require(\'logic-machine\');\r\n\r\nvar src = [\r\n  \'or\', // one is true\r\n  { expected: 7, operator: \'gt\', value: 5 }, // false\r\n  { expected: 3, operator: \'eq\', value: 5 }, // false\r\n  \r\n  // true (by default, some of the array)\r\n  { expected: 5, operator: \'eq\', value: [4,5,6] },\r\n  \r\n  // true (arr is [{ value: 4, result: false }, { value: 5, result: true }, { value: 6, result: false }])\r\n  { expected: 5, operator: \'eq\', value: [4,5,6], getResult: arr => !!arr[1].result },\r\n\r\n  // false (arr is [{ value: 5, result: true }, { value: 4, result: false }, { value: 6, result: false }])\r\n  { expected: 5, operator: \'eq\', value: [5,4,6], getResult: arr => !!arr[1].result },\r\n];\r\n\r\nconsole.log(logic(src)); // true\r\n```\r\n\r\noperators\r\n=========\r\n\r\nLogic machine has some operators:\r\n\r\n* **eq**: *value* equals *expected*\r\n* **neq**: *value* not equals *expected*\r\n* **gt**: *value* greaters than *expected*\r\n* **gte**: *value* greaters than or equals *expected*\r\n* **lt**: *value* lowers than *expected*\r\n* **lte**: *value* lowers than or equals *expected*\r\n* **contain**: *value* string contains *expected* string\r\n* **notContain**: *value* string not contains *expected* string\r\n* **startWith**: *value* string starts with *expected* string\r\n* **endWith**: *value* string ends with *expected* string\r\n* **regexp**: *value* string matches *expected* (as a regular expression)\r\n* **includes**: *value* (as an array) includes *expected* (as a string)\r\n* **nincludes**: *value* (as an array) not includes *expected* (as a string)\r\n\r\ninstall\r\n=======\r\n\r\nWith [npm](https://www.npmjs.com/package/logic-machine) do:\r\n\r\n```\r\nnpm install logic-machine\r\n```\r\n\r\ntest\r\n====\r\n\r\nWith [npm](https://www.npmjs.com/package/logic-machine) do:\r\n\r\n```\r\nnpm test\r\n```\r\n',
+21 silly publish   readmeFilename: 'README.md',
+21 silly publish   gitHead: '84e35dd0b2c8a6e4d643aa2067575fc3d40a7491',
+21 silly publish   _id: 'logic-machine@0.2.0',
+21 silly publish   _shasum: '9d4f5d9f4b67fcf4fb48b2551dddd76fcf19830d',
+21 silly publish   _from: '.' }
+22 verbose getPublishConfig undefined
+23 silly mapToRegistry name logic-machine
+24 silly mapToRegistry using default registry
+25 silly mapToRegistry registry https://registry.npmjs.org/
+26 silly mapToRegistry data Result {
+26 silly mapToRegistry   raw: 'logic-machine',
+26 silly mapToRegistry   scope: null,
+26 silly mapToRegistry   escapedName: 'logic-machine',
+26 silly mapToRegistry   name: 'logic-machine',
+26 silly mapToRegistry   rawSpec: '',
+26 silly mapToRegistry   spec: 'latest',
+26 silly mapToRegistry   type: 'tag' }
+27 silly mapToRegistry uri https://registry.npmjs.org/logic-machine
+28 verbose publish registryBase https://registry.npmjs.org/
+29 silly publish uploading /home/jwo1f/.npm/logic-machine/0.2.0/package.tgz
+30 verbose request uri https://registry.npmjs.org/logic-machine
+31 verbose request sending authorization for write operation
+32 info attempt registry request try #1 at 17:38:35
+33 verbose request using bearer token for auth
+34 verbose request id c40fbb05114572ad
+35 http request PUT https://registry.npmjs.org/logic-machine
+36 http 403 https://registry.npmjs.org/logic-machine
+37 verbose headers { 'content-type': 'application/json',
+37 verbose headers   'cache-control': 'max-age=300',
+37 verbose headers   'content-length': '95',
+37 verbose headers   'accept-ranges': 'bytes',
+37 verbose headers   date: 'Tue, 07 Mar 2017 14:38:36 GMT',
+37 verbose headers   via: '1.1 varnish',
+37 verbose headers   connection: 'keep-alive',
+37 verbose headers   'x-served-by': 'cache-bma7033-BMA',
+37 verbose headers   'x-cache': 'MISS',
+37 verbose headers   'x-cache-hits': '0',
+37 verbose headers   'x-timer': 'S1488897515.664045,VS0,VE931',
+37 verbose headers   vary: 'Accept-Encoding' }
+38 verbose request invalidating /home/jwo1f/.npm/registry.npmjs.org/logic-machine on PUT
+39 error publish Failed PUT 403
+40 verbose stack Error: "You cannot publish over the previously published version 0.2.0." : logic-machine
+40 verbose stack     at makeError (/usr/lib64/node_modules/npm/node_modules/npm-registry-client/lib/request.js:302:12)
+40 verbose stack     at CachingRegistryClient.<anonymous> (/usr/lib64/node_modules/npm/node_modules/npm-registry-client/lib/request.js:290:14)
+40 verbose stack     at Request._callback (/usr/lib64/node_modules/npm/node_modules/npm-registry-client/lib/request.js:210:14)
+40 verbose stack     at Request.self.callback (/usr/lib64/node_modules/npm/node_modules/request/request.js:187:22)
+40 verbose stack     at emitTwo (events.js:106:13)
+40 verbose stack     at Request.emit (events.js:191:7)
+40 verbose stack     at Request.<anonymous> (/usr/lib64/node_modules/npm/node_modules/request/request.js:1048:10)
+40 verbose stack     at emitOne (events.js:96:13)
+40 verbose stack     at Request.emit (events.js:188:7)
+40 verbose stack     at IncomingMessage.<anonymous> (/usr/lib64/node_modules/npm/node_modules/request/request.js:969:12)
+41 verbose statusCode 403
+42 verbose pkgid logic-machine
+43 verbose cwd /home/jwo1f/logic-machine
+44 error Linux 4.9.7
+45 error argv "/usr/bin/node" "/usr/bin/npm" "publish"
+46 error node v6.10.0
+47 error npm  v3.10.10
+48 error code E403
+49 error "You cannot publish over the previously published version 0.2.0." : logic-machine
+50 error If you need help, you may report this error at:
+50 error     <https://github.com/npm/npm/issues>
+51 verbose exit [ 1, true ]

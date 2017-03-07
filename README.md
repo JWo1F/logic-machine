@@ -42,7 +42,7 @@ var src = [
   // true (arr is [{ value: 4, result: false }, { value: 5, result: true }, { value: 6, result: false }])
   { expected: 5, operator: 'eq', value: [4,5,6], getResult: arr => !!arr[1].result },
 
-  // false (arr is [{ value: 4, result: false }, { value: 5, result: true }, { value: 6, result: false }])
+  // false (arr is [{ value: 5, result: true }, { value: 4, result: false }, { value: 6, result: false }])
   { expected: 5, operator: 'eq', value: [5,4,6], getResult: arr => !!arr[1].result },
 ];
 
@@ -55,7 +55,6 @@ operators
 Logic machine has some operators:
 
 * **eq**: *value* equals *expected*
-* **neq**: *value* not equals *expected*
 * **neq**: *value* not equals *expected*
 * **gt**: *value* greaters than *expected*
 * **gte**: *value* greaters than or equals *expected*
