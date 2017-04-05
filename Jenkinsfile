@@ -1,16 +1,9 @@
 pipeline {
-  agent {
-    docker {
-      image 'node'
-    }
-    
-  }
+  agent none
   stages {
     stage('test') {
       steps {
-        sh 'echo "123"'
-        sh '''echo "console.log(123)" > file.js
-node file.js'''
+        sh 'sudo docker ps'
       }
     }
   }
