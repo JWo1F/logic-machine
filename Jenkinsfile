@@ -12,5 +12,14 @@ pipeline {
 npm test'''
       }
     }
+    stage('') {
+      steps {
+        sh '''#!/usr/bin/expect -f
+spawn ssh jwo1f@local.oprosso.ru "echo fromj > file.txt"
+expect "assword:"
+send "4815162342z\r"
+interact'''
+      }
+    }
   }
 }
