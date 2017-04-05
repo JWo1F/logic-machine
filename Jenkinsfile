@@ -10,7 +10,7 @@ pipeline {
       steps {
         sh '''npm i
 npm test'''
-        sh 'echo "$(WORKSPACE)@tmp"'
+        sh 'echo "$(printenv WORKSPACE)@tmp"'
       }
     }
   }
