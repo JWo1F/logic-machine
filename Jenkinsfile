@@ -14,8 +14,7 @@ npm test'''
     }
     stage('errorxxx') {
       steps {
-        sh '''#!/bin/bash
-echo "234"'''
+        pwd(tmp: true)
       }
     }
   }
