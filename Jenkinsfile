@@ -10,11 +10,7 @@ pipeline {
       steps {
         sh '''npm i
 npm test'''
-      }
-    }
-    stage('errorxxx') {
-      steps {
-        pwd(tmp: true)
+        sh 'echo %WORKSPACE%@tmp'
       }
     }
   }
