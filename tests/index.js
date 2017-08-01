@@ -33,9 +33,9 @@ test('check all handlers', function(t) {
   var src = [
     { expected: 1, operator: 'eq', value: 1 },
     { expected: 2, operator: 'neq', value: 1 },
-    { expected: 6, operator: 'gt', value: 5 },
+    { expected: 5, operator: 'gt', value: 6 },
     { expected: 5, operator: 'gte', value: 5 },
-    { expected: 1, operator: 'lt', value: 2 },
+    { expected: 2, operator: 'lt', value: 1 },
     { expected: 1, operator: 'lte', value: 1 },
     { expected: 'hello', operator: 'contain', value: 'hello world' },
     { expected: 'foo', operator: 'notContain', value: 'bar' },
@@ -46,9 +46,9 @@ test('check all handlers', function(t) {
     { expected: 'a', operator: 'nincludes', value: ['b', 'c'] },
     { expected: 1, operator: 'eq', value: [1] },
     { expected: 2, operator: 'neq', value: [1] },
-    { expected: 6, operator: 'gt', value: [5] },
+    { expected: 5, operator: 'gt', value: [6] },
     { expected: 5, operator: 'gte', value: [5] },
-    { expected: 1, operator: 'lt', value: [2] },
+    { expected: 2, operator: 'lt', value: [1] },
     { expected: 1, operator: 'lte', value: [1] },
     { expected: 'hello', operator: 'contain', value: ['hello world'] },
     { expected: 'foo', operator: 'notContain', value: ['bar'] },
@@ -80,6 +80,6 @@ test('check arrays', function(t) {
 test('check NaN', function(t) {
   t.equal(logic(['or', { expected: NaN, operator: 'includes', value: 'lalala' }]), false, 'includes is NaN');
   t.equal(logic(['or', { expected: NaN, operator: 'nincludes', value: 'lalala' }]), true, 'nincludes is NaN');
-  
+
   t.end();
 });
