@@ -76,3 +76,10 @@ test('check arrays', function(t) {
 
   t.end();
 });
+
+test('check NaN', function(t) {
+  t.equal(logic(['or', { expected: NaN, operator: 'includes', value: 'lalala' }]), false, 'includes is NaN');
+  t.equal(logic(['or', { expected: NaN, operator: 'nincludes', value: 'lalala' }]), true, 'nincludes is NaN');
+  
+  t.end();
+});

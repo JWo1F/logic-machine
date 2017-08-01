@@ -1,23 +1,19 @@
 export default {
-  eq: (a, b) => toString(a) == b,
-  neq: (a, b) => toString(a) != b,
-  gt: (a, b) => toString(a) > b,
-  gte: (a, b) => toString(a) >= b,
-  lt: (a, b) => toString(a) < b,
-  lte: (a, b) => toString(a) <= b,
-  contain: (a, b) => toString(b).match(new RegExp(escapeRegExp(a || ''))),
-  notContain: (a, b) => !toString(b).match(new RegExp(escapeRegExp(a || ''))),
-  startWith: (a, b) => toString(b).match(new RegExp('^' + escapeRegExp(a || ''))),
-  endWith: (a, b) => toString(b).match(new RegExp(escapeRegExp(a || '') + '$')),
-  regexp: (a, b) => toString(b).match(new RegExp(a)),
-  includes: (a, b) => b.includes(toString(a)),
-  nincludes: (a, b) => !b.includes(toString(a))
+  eq: (a, b) => String(a) == b,
+  neq: (a, b) => String(a) != b,
+  gt: (a, b) => String(a) > b,
+  gte: (a, b) => String(a) >= b,
+  lt: (a, b) => String(a) < b,
+  lte: (a, b) => String(a) <= b,
+  contain: (a, b) => String(b).match(new RegExp(escapeRegExp(a || ''))),
+  notContain: (a, b) => !String(b).match(new RegExp(escapeRegExp(a || ''))),
+  startWith: (a, b) => String(b).match(new RegExp('^' + escapeRegExp(a || ''))),
+  endWith: (a, b) => String(b).match(new RegExp(escapeRegExp(a || '') + '$')),
+  regexp: (a, b) => String(b).match(new RegExp(a)),
+  includes: (a, b) => b.includes(String(a)),
+  nincludes: (a, b) => !b.includes(String(a))
 };
 
 function escapeRegExp(str) {
-  return toString(str).replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-}
-
-function toString(item) {
-  return item || '';
+  return String(str).replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
 }
