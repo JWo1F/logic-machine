@@ -83,3 +83,13 @@ test('check NaN', function(t) {
 
   t.end();
 });
+
+test('check includes', function(t) {
+  t.equal(logic(['or', { expected: 'abc', operator: 'includes', value: ['xxx', 'abc', 'yyy'] }]), true, 'includes true');
+  t.equal(logic(['or', { expected: 'abc', operator: 'includes', value: ['xx', 'xabcx', 'yy'] }]), false, 'includes false');
+
+  t.equal(logic(['or', { expected: 'abc', operator: 'nincludes', value: ['xx', 'xabcx', 'yy'] }]), true, 'nincludes true');
+  t.equal(logic(['or', { expected: 'abc', operator: 'nincludes', value: ['xxx', 'abc', 'yyy'] }]), false, 'nincludes false');
+  
+  t.end();
+})

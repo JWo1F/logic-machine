@@ -6,6 +6,8 @@ import handlers from './handlers';
 // ["or", {1}, ["and", {2}, {3}], {4}]
 // 1 OR (2 AND 3) OR 4
 
+const everyTypes = ['nincludes'];
+
 export default function logicMachine(logic) {
   const [type, ...array] = logic;
   const method = (type == 'and' ? 'every' : 'some');
@@ -21,6 +23,7 @@ export default function logicMachine(logic) {
           return { value, result: handler ? handler(item.expected, value) : false };
         });
 
+        const defaultComparisor = everyTypes.indexOf(item.operator) > -1 ? everyComparisor : someComparisor;
         return (item.getResult || defaultComparisor)(result);
       } else {
         if(handler) return handler(item.expected, item.value);
@@ -30,6 +33,10 @@ export default function logicMachine(logic) {
   });
 }
 
-function defaultComparisor(arr) {
+function someComparisor(arr) {
   return arr.some(v => !!v.result);
+}
+
+function everyComparisor(arr) {
+  return arr.every(v => !!v.result);
 }
