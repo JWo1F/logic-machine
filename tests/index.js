@@ -92,4 +92,10 @@ test('check includes', function(t) {
   t.equal(logic(['or', { expected: 'abc', operator: 'nincludes', value: ['xxx', 'abc', 'yyy'] }]), false, 'nincludes false');
   
   t.end();
-})
+});
+
+test('check undefined', function(t) {
+  t.equal(logic(['or', { expected: 'abc', operator: 'neq', value: undefined }]), false, 'neq undefined');
+
+  t.end();
+});

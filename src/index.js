@@ -20,17 +20,31 @@ export default function logicMachine(logic) {
 
       if(Array.isArray(item.value)) {
         const result = item.value.map(value => {
-          return { value, result: handler ? handler(item.expected, value) : false };
+          return { value, result: checker(handler, value, item.expected) };
         });
 
-        const defaultComparisor = everyTypes.indexOf(item.operator) > -1 ? everyComparisor : someComparisor;
-        return (item.getResult || defaultComparisor)(result);
+        return (item.getResult || defaultComparisor(item.operator))(result);
       } else {
-        if(handler) return handler(item.expected, item.value);
-        else return false;
+        return checker(handler, item.value, item.expected);
       }
     }
   });
+}
+
+function checker(handler, value, expected) {
+  if(handler && typeof value !== 'undefined' && typeof expected !== 'undefined') {
+    return handler(expected, value);
+  }
+
+  return false;
+}
+
+function defaultComparisor(operator) {
+  if(operator == 'nincludes') {
+    return everyComparisor;
+  } else {
+    return someComparisor;
+  }
 }
 
 function someComparisor(arr) {
