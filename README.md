@@ -1,7 +1,8 @@
 Logic machine
 =============
 
-A logic machine for JS
+A logic machine for JS.
+Note: if an `operator` or an `expected` is an `undefined` then logic block **always** return false.
 
 example
 =======
