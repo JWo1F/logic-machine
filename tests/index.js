@@ -70,7 +70,9 @@ test('check all handlers', function(t) {
 
 
 test('check arrays', function(t) {
-  t.equal(logic(['and', { expected: 1, operator: 'eq', value: [1,2,3] }]), true, 'some');
+  t.equal(logic(['and', { expected: 1, operator: 'eq', value: [1,2,3] }]), false, 'every 1');
+  t.equal(logic(['and', { expected: 1, operator: 'eq', value: [1] }]), true, 'every 2');
+  t.equal(logic(['and', { expected: 1, operator: 'eq', value: [1, 1, 1] }]), true, 'every 3');
   t.equal(logic(['and', { expected: 1, operator: 'eq', value: [1,1,3], getResult: arr => arr.every(v => !!v.result) }]), false, 'custom result 1');
   t.equal(logic(['and', { expected: 1, operator: 'eq', value: [2,1,3], getResult: arr => !!arr[1].result }]), true, 'custom result 2');
 

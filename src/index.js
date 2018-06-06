@@ -6,7 +6,7 @@ import handlers from './handlers';
 // ["or", {1}, ["and", {2}, {3}], {4}]
 // 1 OR (2 AND 3) OR 4
 
-const everyTypes = ['nincludes'];
+const everyTypes = ['nincludes', 'eq'];
 
 export default function logicMachine(logic) {
   const [type, ...array] = logic;
@@ -40,7 +40,7 @@ function checker(handler, value, expected) {
 }
 
 function defaultComparisor(operator) {
-  if(operator == 'nincludes') {
+  if(everyTypes.includes(operator)) {
     return everyComparisor;
   } else {
     return someComparisor;
