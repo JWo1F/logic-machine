@@ -197,21 +197,6 @@ All public types are exported:
 import logic, { Logic, Item, Node, Operator, Result } from "logic-machine";
 ```
 
-## Migrating from 2.0.x
-
-* New: string DSL and a second `input` argument to `logic()`. JSON rules with explicit `value` still evaluate the same way.
-* New named exports: `parse`, `stringify`. Also available as properties on the default function (`logic.parse`, `logic.stringify`).
-* The CJS bundle is gone. Use ESM in Node, or the IIFE bundle in browsers.
-
-## Migrating from 1.x
-
-* `Logic.type` is now required. Previously omitting it silently meant `or`.
-* Renamed operators: `contain` → `contains`, `notContain` → `notContains`, `startWith` → `startsWith`, `endWith` → `endsWith`, `include` → `includes`, `exclude` → `excludes`.
-* `includes` / `excludes` are array-membership operators, not scalar `eq` / `neq` aliases. `expected` is the set; `value` is the single item being tested.
-* `eq` / `neq` now use strict equality.
-* `contains`, `notContains`, `startsWith`, `endsWith` no longer interpret regex syntax. Use `regexp` for patterns.
-* `regexp` accepts a `RegExp` instance and returns `false` on invalid patterns instead of throwing.
-
 ## Development
 
 The source is plain JavaScript (ESM). The public TypeScript types live in [src/index.d.ts](./src/index.d.ts) and are copied into `dist/` at build time.
