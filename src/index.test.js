@@ -400,6 +400,27 @@ describe("named fields against an object input", () => {
     expect(logic(rule, { name: "John", age: 99 })).toBe(false);
   });
 
+  test("JSON form with `field` and a second-arg input behaves the same as the DSL", () => {
+    const rule = {
+      type: "or",
+      group: [
+        { field: "name", operator: "eq", expected: "Alex" },
+        { field: "age", operator: "eq", expected: 18 },
+      ],
+    };
+    expect(logic(rule, { name: "John", age: 18 })).toBe(true);
+    expect(logic(rule, { name: "John", age: 99 })).toBe(false);
+  });
+
+  test("a top-level Item with `field` works against a second-arg input", () => {
+    expect(
+      logic({ operator: "gte", expected: 18, field: "age" }, { age: 22 }),
+    ).toBe(true);
+    expect(
+      logic({ operator: "gte", expected: 18, field: "age" }, { age: 5 }),
+    ).toBe(false);
+  });
+
   test("AND across multiple fields", () => {
     const rule = 'name:eq("Alex") and age:gte(18)';
     expect(logic(rule, { name: "Alex", age: 20 })).toBe(true);

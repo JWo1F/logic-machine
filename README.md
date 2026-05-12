@@ -92,20 +92,23 @@ A node is either a `Logic` group (`{ type: "and" | "or", group: [...] }`) or an 
 
 ## How values get resolved
 
-Every leaf compares some *value* against the literal `expected`. You can supply the value in three ways. The resolver tries them in order:
+Every leaf compares some *value* against the literal `expected`. You can supply the value in any of these ways. The resolver tries them in order:
 
 ```js
 // 1. The runtime input itself
 logic("gte(18)", 22); // true
 
-// 2. A named field on the input
+// 2. A named field on the input, DSL form
 logic("age:gte(18)", { age: 22 }); // true
 
-// 3. A literal baked into the rule (JSON only)
+// 3. A named field on the input, JSON form (same as #2)
+logic({ operator: "gte", expected: 18, field: "age" }, { age: 22 }); // true
+
+// 4. A literal baked into the rule (JSON only)
 logic({ operator: "gte", expected: 18, value: 22 }); // true
 ```
 
-If nothing is set — no `value`, no `field`, no `input` — the leaf is `false`. The same goes if a `field` is missing on the input or the input isn't an object.
+`#2` and `#3` are exactly the same rule — the DSL is just sugar over JSON. Within a single Item, `value` wins over `field`, which wins over the bare input. If nothing is set — no `value`, no `field`, no `input` — the leaf is `false`. The same goes if a `field` is missing on the input or the input isn't an object.
 
 ## Operators
 
