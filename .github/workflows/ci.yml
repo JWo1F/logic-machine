@@ -7,6 +7,7 @@ on:
     branches: [master, main]
 
 jobs:
+  # Tests run on every supported runtime Node version.
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -23,5 +24,19 @@ jobs:
       - run: npm ci
 
       - run: npm test -- --ci
+
+  # Bundle build runs once on the current LTS. rolldown 1.x relies on
+  # node:util#styleText which is only available in Node >=20.12.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - run: npm ci
 
       - run: npm run build

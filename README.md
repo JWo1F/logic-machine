@@ -259,8 +259,8 @@ The IIFE bundle exposes `window.LogicMachine` — the default function with `par
 
 ```sh
 npm install
-npm test       # Jest, native ESM
-npm run build  # rolldown -> dist/ (ESM + IIFE + types)
+npm test       # Jest, native ESM — runs on Node 18+
+npm run build  # rolldown -> dist/ (ESM + IIFE + types) — needs Node 20+
 ```
 
 ## License
