@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.1.0
+
+### Added
+
+* String DSL for rules:
+
+  ```text
+  (eq(10) or includes(1, 2, 3)) and lt(20)
+  name:eq("Alex") and age:gte(18)
+  ```
+
+* `logic(rule, input)` — `rule` may be a string (parsed automatically) or a JSON tree. `input` is used as the value for any item that doesn't set `value` directly.
+* Named fields: a leaf can be prefixed `field:op(args)` to read that field off an object `input`.
+* `Item.field?: string` — pulls a key off the runtime input.
+* New named exports: `parse(string) -> Logic | Item` and `stringify(node) -> string`. Both are also attached to the default function as `logic.parse` / `logic.stringify`.
+* IIFE bundle (`dist/logic-machine.global.js`) for direct `<script>` use in browsers; exposes `window.LogicMachine`.
+
+### Changed
+
+* Build outputs: ESM (`dist/index.mjs`) + IIFE (`dist/logic-machine.global.js`). The package's `exports` map and `browser` / `unpkg` / `jsdelivr` fields point to the right one per consumer.
+* `Item.value` is now optional. If omitted, the runtime input (optionally via `field`) is used.
+
+### Removed
+
+* CJS bundle. Use ESM in Node or the IIFE in browsers.
+
 ## 2.0.0
 
 Major rewrite. See the README's "Migrating from 1.x" section for breaking changes.

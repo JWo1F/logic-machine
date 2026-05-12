@@ -1,17 +1,20 @@
 {
   "name": "logic-machine",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A small, dependency-free logic evaluator for JavaScript.",
   "type": "module",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "browser": "./dist/logic-machine.global.js",
+  "unpkg": "./dist/logic-machine.global.js",
+  "jsdelivr": "./dist/logic-machine.global.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    }
+      "import": "./dist/index.mjs"
+    },
+    "./browser": "./dist/logic-machine.global.js"
   },
   "files": [
     "dist",
@@ -36,9 +39,11 @@
     "rules-engine",
     "expression",
     "evaluator",
+    "dsl",
+    "parser",
+    "predicate",
     "state",
-    "automation",
-    "finite"
+    "automation"
   ],
   "author": "Alex Ivashkin <savegod1@gmail.com>",
   "license": "MIT",

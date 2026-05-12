@@ -1,8 +1,8 @@
 # logic-machine
 
-A small, dependency-free evaluator for boolean expression trees. Describe a rule as plain JSON, get back `true` or `false`.
+A small, dependency-free evaluator for boolean expression trees. Describe a rule as JSON or in a tiny string DSL, get back `true` or `false`.
 
-Works in Node.js (>=18) and modern browsers. Ships ESM, CJS, and TypeScript declarations.
+Works in Node.js (>=18) and modern browsers. Ships ESM for Node and an IIFE bundle for browsers, plus TypeScript declarations.
 
 ## Install
 
@@ -10,30 +10,37 @@ Works in Node.js (>=18) and modern browsers. Ships ESM, CJS, and TypeScript decl
 npm install logic-machine
 ```
 
+Or from a CDN:
+
+```html
+<script src="https://unpkg.com/logic-machine/dist/logic-machine.global.js"></script>
+<script>
+  LogicMachine("eq(10)", 10); // true
+</script>
+```
+
 ## Quick start
 
-```ts
+```js
 import logic from "logic-machine";
 
-const result = logic({
+// JSON form with explicit values
+logic({
   type: "or",
   group: [
     { operator: "gt", expected: 5, value: 7 },
     { operator: "eq", expected: 5, value: 3 },
-    {
-      type: "and",
-      group: [
-        { operator: "lt", expected: 5, value: 6 },
-        { operator: "lte", expected: 5, value: 5 },
-      ],
-    },
   ],
-});
+}); // true
 
-// result === true
+// String DSL evaluated against a runtime input
+logic("eq(10) or lt(5)", 3); // true
+
+// Named fields against an object input
+logic('name:eq("Alex") and age:gte(18)', { name: "Alex", age: 20 }); // true
 ```
 
-A logic tree is a `Logic` node (with `type` and `group`) or a leaf `Item` (with `operator`, `expected`, `value`). Branches nest freely.
+A logic tree is a `Logic` node (with `type` and `group`) or a leaf `Item` (with `operator` and `expected`, optionally `value` / `field`). Branches nest freely.
 
 ## Logic nodes
 
@@ -54,12 +61,19 @@ type Logic = {
 type Item = {
   operator: Operator;
   expected: unknown;
-  value: unknown;
-  getValue?: (results: Result[]) => boolean;
+  value?: unknown;                            // explicit value to test
+  field?: string;                             // read this field off the runtime input
+  getValue?: (results: Result[]) => boolean;  // custom combiner for array values
 };
 ```
 
-An item compares `value` against `expected` using one of the operators below. If either side is `undefined`, the item evaluates to `false`.
+An item compares the resolved value against `expected` using one of the operators below. The value is resolved in this order:
+
+1. `item.value` if set.
+2. `input[item.field]` if `item.field` is set and `input` is an object.
+3. The runtime `input` itself.
+
+If neither side has a value (or `expected` is missing), the item evaluates to `false`.
 
 ### Operators
 
@@ -81,24 +95,65 @@ An item compares `value` against `expected` using one of the operators below. If
 
 `contains` and friends treat `expected` as a literal string — regex characters are not interpreted. Use `regexp` if you want pattern matching. Invalid regex patterns return `false` instead of throwing.
 
-`includes` and `excludes` flip the usual handler shape: `expected` is the *set* of values to test against, and `value` is the single item being checked. They use JS `Array.prototype.includes` (SameValueZero), which matches `NaN` but otherwise behaves like `===`. If `expected` isn't an array, both return `false`.
+`includes` and `excludes` flip the usual handler shape: `expected` is the set, `value` is the single item. They use `Array.prototype.includes` (SameValueZero — matches `NaN` but otherwise behaves like `===`). If `expected` isn't an array, both return `false`.
 
-```ts
-// "is the user's role one of these?"
-logic({
-  type: "and",
-  group: [{ operator: "includes", expected: ["admin", "owner"], value: user.role }],
-});
+## String DSL
+
+`logic-machine` ships with a small string DSL so rules can be authored, stored, and shipped as plain strings.
+
+```text
+expression  := and-expr ("or" and-expr)*          // OR has lower precedence
+and-expr    := term ("and" term)*
+term        := "(" expression ")" | leaf
+leaf        := [field ":"] operator "(" args? ")"
+args        := literal ("," literal)*
+literal     := number | string | true | false | null
 ```
+
+* `and` binds tighter than `or`. Parens override.
+* Variadic operators (`includes`, `excludes`) take any number of args.
+* All other operators take exactly one arg.
+* Strings use `"..."` or `'...'` with JSON-style escapes.
+
+```js
+import logic, { parse, stringify } from "logic-machine";
+
+logic("eq(10)", 10);                            // true
+logic("(eq(10) or includes(1, 2, 3)) and lt(20)", 2); // true
+logic('role:includes("admin", "owner")', { role: "admin" });  // true
+
+parse("(eq(10) or includes(1, 2, 3)) and eq(5)");
+// {
+//   type: "and",
+//   group: [
+//     { type: "or", group: [
+//         { operator: "eq", expected: 10 },
+//         { operator: "includes", expected: [1, 2, 3] },
+//       ] },
+//     { operator: "eq", expected: 5 },
+//   ],
+// }
+
+stringify({
+  type: "and",
+  group: [
+    { operator: "eq", expected: "Alex", field: "name" },
+    { operator: "gte", expected: 18, field: "age" },
+  ],
+});
+// 'name:eq("Alex") and age:gte(18)'
+```
+
+Invalid input throws `SyntaxError` (from `parse`) or `TypeError` (from `stringify`, e.g. when an item has both `expected` and `value`).
 
 ## Array values
 
-When `value` is an array and the operator is **not** `includes` / `excludes`, the operator is applied element-wise. The default rule for combining the per-element results depends on the operator:
+When the resolved value is an array and the operator is **not** `includes` / `excludes`, the operator is applied element-wise. Default combiners:
 
-* **Every element must match** for `eq` and `notContains` — "all values are X", "none of them contain X".
+* **Every element must match** for `eq` and `notContains`.
 * **At least one element must match** for everything else.
 
-```ts
+```js
 // "all values are 1"
 logic({
   type: "and",
@@ -110,19 +165,13 @@ logic({
   type: "or",
   group: [{ operator: "gt", expected: 10, value: [3, 11, 7] }],
 }); // true
-
-// array membership: "the user's role is one of the allowed roles"
-logic({
-  type: "and",
-  group: [{ operator: "includes", expected: ["user", "admin"], value: "admin" }],
-}); // true
 ```
 
 ### Custom combiners
 
-Provide a `getValue` to override the default array combiner. It receives the per-element results and returns the final boolean.
+Provide a `getValue` to override the default array combiner:
 
-```ts
+```js
 logic({
   type: "and",
   group: [
@@ -148,16 +197,20 @@ All public types are exported:
 import logic, { Logic, Item, Node, Operator, Result } from "logic-machine";
 ```
 
+## Migrating from 2.0.x
+
+* New: string DSL and a second `input` argument to `logic()`. JSON rules with explicit `value` still evaluate the same way.
+* New named exports: `parse`, `stringify`. Also available as properties on the default function (`logic.parse`, `logic.stringify`).
+* The CJS bundle is gone. Use ESM in Node, or the IIFE bundle in browsers.
+
 ## Migrating from 1.x
 
 * `Logic.type` is now required. Previously omitting it silently meant `or`.
 * Renamed operators: `contain` → `contains`, `notContain` → `notContains`, `startWith` → `startsWith`, `endWith` → `endsWith`, `include` → `includes`, `exclude` → `excludes`.
-* `includes` / `excludes` are now array-membership operators rather than scalar `eq` / `neq` aliases. They take the allowed (or disallowed) set in `expected` and the single item to test in `value`; if `expected` isn't an array, both return `false`.
-* `eq` and `neq` now use strict equality. `1 === "1"` is `false`.
-* `contains`, `notContains`, `startsWith`, `endsWith` no longer interpret regex syntax in `expected`. Use the `regexp` operator for that.
-* The `regexp` operator now accepts a `RegExp` instance (so you can pass flags) and returns `false` on invalid patterns instead of throwing.
-* Debug `console.log` calls are gone.
-* Dual ESM/CJS build; types live in `dist/index.d.ts`.
+* `includes` / `excludes` are array-membership operators, not scalar `eq` / `neq` aliases. `expected` is the set; `value` is the single item being tested.
+* `eq` / `neq` now use strict equality.
+* `contains`, `notContains`, `startsWith`, `endsWith` no longer interpret regex syntax. Use `regexp` for patterns.
+* `regexp` accepts a `RegExp` instance and returns `false` on invalid patterns instead of throwing.
 
 ## Development
 
@@ -166,7 +219,7 @@ The source is plain JavaScript (ESM). The public TypeScript types live in [src/i
 ```sh
 npm install
 npm test       # run tests (Jest, native ESM)
-npm run build  # bundle dist/ (rolldown)
+npm run build  # bundle dist/ (rolldown -> ESM + IIFE)
 ```
 
 ## License

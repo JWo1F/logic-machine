@@ -358,3 +358,75 @@ describe("NaN edge cases", () => {
     ).toBe(true);
   });
 });
+
+describe("string DSL input", () => {
+  test("a string rule is parsed and evaluated against the second argument", () => {
+    expect(logic("eq(10)", 10)).toBe(true);
+    expect(logic("eq(10)", 5)).toBe(false);
+  });
+
+  test("combinators work as expected on a runtime input", () => {
+    expect(logic("eq(10) or lt(5)", 3)).toBe(true);
+    expect(logic("eq(10) or lt(5)", 7)).toBe(false);
+    expect(logic("gt(0) and lt(10)", 5)).toBe(true);
+    expect(logic("gt(0) and lt(10)", 11)).toBe(false);
+  });
+
+  test("includes/excludes work against a single input value", () => {
+    expect(logic("includes(1, 2, 3)", 2)).toBe(true);
+    expect(logic("includes(1, 2, 3)", 4)).toBe(false);
+    expect(logic("excludes(1, 2, 3)", 4)).toBe(true);
+    expect(logic("excludes(1, 2, 3)", 2)).toBe(false);
+  });
+
+  test("the README example evaluates", () => {
+    // (eq(10) or includes(1, 2, 3)) and lt(20)
+    expect(logic("(eq(10) or includes(1, 2, 3)) and lt(20)", 2)).toBe(true);
+    expect(logic("(eq(10) or includes(1, 2, 3)) and lt(20)", 10)).toBe(true);
+    expect(logic("(eq(10) or includes(1, 2, 3)) and lt(20)", 5)).toBe(false);
+    expect(logic("(eq(10) or includes(1, 2, 3)) and lt(20)", 50)).toBe(false);
+  });
+
+  test("missing input falls through to false", () => {
+    expect(logic("eq(10)")).toBe(false);
+  });
+});
+
+describe("named fields against an object input", () => {
+  test("each leaf reads its own field off the input", () => {
+    const rule = 'name:eq("Alex") or age:eq(18)';
+    expect(logic(rule, { name: "John", age: 18 })).toBe(true);
+    expect(logic(rule, { name: "Alex", age: 99 })).toBe(true);
+    expect(logic(rule, { name: "John", age: 99 })).toBe(false);
+  });
+
+  test("AND across multiple fields", () => {
+    const rule = 'name:eq("Alex") and age:gte(18)';
+    expect(logic(rule, { name: "Alex", age: 20 })).toBe(true);
+    expect(logic(rule, { name: "Alex", age: 12 })).toBe(false);
+    expect(logic(rule, { name: "Bob", age: 20 })).toBe(false);
+  });
+
+  test("missing field on the input resolves to false", () => {
+    expect(logic('foo:eq(1)', { bar: 1 })).toBe(false);
+  });
+
+  test("null / non-object input with a field rule resolves to false", () => {
+    expect(logic('name:eq("Alex")', null)).toBe(false);
+    expect(logic('name:eq("Alex")', undefined)).toBe(false);
+  });
+
+  test("a field-targeted includes evaluates membership for that field", () => {
+    const rule = 'role:includes("admin", "owner")';
+    expect(logic(rule, { role: "admin" })).toBe(true);
+    expect(logic(rule, { role: "guest" })).toBe(false);
+  });
+
+  test("explicit item.value still wins over input and field", () => {
+    const rule = {
+      type: "and",
+      group: [{ operator: "eq", expected: 1, field: "n", value: 1 }],
+    };
+    expect(logic(rule, { n: 999 })).toBe(true);
+  });
+});
