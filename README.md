@@ -106,6 +106,20 @@ logic({ operator: "gte", expected: 18, field: "age" }, { age: 22 }); // true
 
 // 4. A literal baked into the rule (JSON only)
 logic({ operator: "gte", expected: 18, value: 22 }); // true
+
+// 5. Mixed — different leaves of the same rule choose independently.
+//    Here the first leaf hard-codes its value; the second reads `age`
+//    off the runtime input.
+logic(
+  {
+    type: "and",
+    group: [
+      { operator: "eq", expected: "active", value: "active" },
+      { operator: "gte", expected: 18, field: "age" },
+    ],
+  },
+  { age: 22 },
+); // true
 ```
 
 `#2` and `#3` are exactly the same rule — the DSL is just sugar over JSON. Within a single Item, `value` wins over `field`, which wins over the bare input. If nothing is set — no `value`, no `field`, no `input` — the leaf is `false`. The same goes if a `field` is missing on the input or the input isn't an object.

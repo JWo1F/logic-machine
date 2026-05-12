@@ -421,6 +421,20 @@ describe("named fields against an object input", () => {
     ).toBe(false);
   });
 
+  test("a single rule can mix per-leaf value with field-from-input", () => {
+    const rule = {
+      type: "and",
+      group: [
+        { operator: "eq", expected: "active", value: "active" },
+        { operator: "gte", expected: 18, field: "age" },
+      ],
+    };
+    expect(logic(rule, { age: 22 })).toBe(true);
+    expect(logic(rule, { age: 12 })).toBe(false);
+    // Changing the runtime input does not affect the hard-coded leaf.
+    expect(logic(rule, { age: 22, somethingElse: "inactive" })).toBe(true);
+  });
+
   test("AND across multiple fields", () => {
     const rule = 'name:eq("Alex") and age:gte(18)';
     expect(logic(rule, { name: "Alex", age: 20 })).toBe(true);
