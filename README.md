@@ -189,12 +189,30 @@ logic({
 type Result = { value: unknown; result: boolean };
 ```
 
+## Custom operators
+
+Register your own operators with `extend`. They become available in JSON form, the string DSL, and the `parse` / `stringify` helpers.
+
+```js
+import logic, { extend } from "logic-machine";
+
+extend({
+  isEven: (_, value) => Number(value) % 2 === 0,
+  longerThan: (expected, value) => String(value).length > expected,
+});
+
+logic("isEven(0)", 4);                    // true
+logic('name:longerThan(3)', { name: "Alex" }); // true
+```
+
+Names must be valid identifiers and must not collide with the DSL keywords (`and`, `or`, `true`, `false`, `null`). Built-in operators can be overridden if you really want to.
+
 ## TypeScript
 
 All public types are exported:
 
 ```ts
-import logic, { Logic, Item, Node, Operator, Result } from "logic-machine";
+import logic, { Logic, Item, Node, Operator, Handler, Result } from "logic-machine";
 ```
 
 ## Development

@@ -1,8 +1,8 @@
-import handlers from "./handlers.js";
+import handlers, { extend } from "./handlers.js";
 import parse from "./parse.js";
 import stringify from "./stringify.js";
 
-export { parse, stringify };
+export { parse, stringify, extend };
 
 function logicMachine(logic, input) {
   const node = typeof logic === "string" ? parse(logic) : logic;
@@ -12,6 +12,7 @@ function logicMachine(logic, input) {
 
 logicMachine.parse = parse;
 logicMachine.stringify = stringify;
+logicMachine.extend = extend;
 
 export default logicMachine;
 

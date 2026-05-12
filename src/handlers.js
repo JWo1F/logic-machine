@@ -23,4 +23,25 @@ const handlers = {
   excludes: (expected, value) => Array.isArray(expected) && !expected.includes(value),
 };
 
+const RESERVED = new Set(["and", "or", "true", "false", "null"]);
+const IDENT_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+export function extend(extensions) {
+  if (extensions === null || typeof extensions !== "object") {
+    throw new TypeError("extend() expects an object of { name: handler } pairs");
+  }
+  for (const [name, fn] of Object.entries(extensions)) {
+    if (!IDENT_RE.test(name)) {
+      throw new TypeError(`extend: '${name}' is not a valid operator name`);
+    }
+    if (RESERVED.has(name)) {
+      throw new TypeError(`extend: '${name}' is a reserved DSL keyword`);
+    }
+    if (typeof fn !== "function") {
+      throw new TypeError(`extend: handler for '${name}' must be a function`);
+    }
+    handlers[name] = fn;
+  }
+}
+
 export default handlers;

@@ -1,4 +1,4 @@
-export type Operator =
+export type BuiltinOperator =
   | "eq"
   | "neq"
   | "gt"
@@ -12,6 +12,12 @@ export type Operator =
   | "regexp"
   | "includes"
   | "excludes";
+
+// Built-in names give IDE autocomplete; the trailing `string & {}` keeps the
+// type open for operators registered at runtime via `extend()`.
+export type Operator = BuiltinOperator | (string & {});
+
+export type Handler = (expected: unknown, value: unknown) => boolean;
 
 export interface Result {
   value: unknown;
@@ -55,5 +61,15 @@ export function parse(input: string): Logic | Item;
 
 /** Convert a Logic/Item tree into its DSL string form. */
 export function stringify(node: Logic | Item): string;
+
+/**
+ * Register custom operators. Names must be valid identifiers and must not
+ * collide with DSL keywords (`and`, `or`, `true`, `false`, `null`). Existing
+ * operators with the same name are overwritten.
+ *
+ *     extend({ isEven: (_, value) => Number(value) % 2 === 0 });
+ *     logicMachine("isEven(0)", 4); // true
+ */
+export function extend(extensions: Record<string, Handler>): void;
 
 export default logicMachine;

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.2.0
+
+### Added
+
+* `extend(extensions)` — register custom operators. Names must be valid identifiers and must not collide with the DSL keywords `and`, `or`, `true`, `false`, `null`. Registered operators participate in JSON evaluation, the string DSL, and `parse` / `stringify`.
+
+  ```js
+  import logic, { extend } from "logic-machine";
+
+  extend({ isEven: (_, value) => Number(value) % 2 === 0 });
+  logic("isEven(0)", 4); // true
+  ```
+
+* `extend` is also exposed on the default function as `logic.extend(...)`.
+
+### Changed
+
+* `Operator` is now `BuiltinOperator | (string & {})` to keep IDE autocomplete for the built-ins while allowing names registered through `extend`.
+
 ## 2.1.0
 
 ### Added
