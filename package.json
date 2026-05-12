@@ -1,49 +1,60 @@
 {
   "name": "logic-machine",
-  "version": "1.0.0",
-  "description": "A logic machine for JS",
-  "main": "build/bundle.js",
-  "types": "build/index.d.ts",
+  "version": "2.0.0",
+  "description": "A small, dependency-free logic evaluator for JavaScript.",
   "type": "module",
-  "repository": "https://github.com/JWo1F/logic-machine",
-  "author": "Alex Ivashkin <savegod1@gmail.com>",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "build": "rollup -c",
-    "test": "jest"
+    "test": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js",
+    "test:coverage": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --coverage",
+    "build": "rolldown -c",
+    "format": "prettier --write \"src/**/*.{js,d.ts}\"",
+    "prepublishOnly": "npm test && npm run build"
   },
   "keywords": [
     "logic",
     "machine",
+    "rules",
+    "rules-engine",
+    "expression",
+    "evaluator",
     "state",
     "automation",
     "finite"
   ],
+  "author": "Alex Ivashkin <savegod1@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JWo1F/logic-machine.git"
+  },
   "bugs": {
     "url": "https://github.com/JWo1F/logic-machine/issues"
   },
   "homepage": "https://github.com/JWo1F/logic-machine#readme",
+  "sideEffects": false,
   "devDependencies": {
-    "@jest/globals": "29.6.3",
-    "@rollup/plugin-typescript": "11.1.2",
-    "@testing-library/react": "14.0.0",
-    "@typescript-eslint/eslint-plugin": "6.4.1",
-    "@typescript-eslint/parser": "6.4.1",
-    "esbuild": "0.19.2",
-    "esbuild-jest": "0.5.0",
-    "escape-string-regexp": "5.0.0",
-    "eslint": "8.47.0",
-    "eslint-config-airbnb": "19.0.4",
-    "eslint-config-airbnb-typescript": "17.1.0",
-    "eslint-plugin-import": "2.28.1",
-    "jest": "29.6.3",
-    "jest-environment-jsdom": "29.6.3",
-    "rollup": "3.28.0",
-    "rollup-plugin-esbuild": "5.0.0",
-    "tslib": "2.6.2",
-    "typescript": "5.1.6"
-  },
-  "dependencies": {
-    "prettier": "^3.0.3"
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3",
+    "rolldown": "^1.0.0-beta.1"
   }
 }
