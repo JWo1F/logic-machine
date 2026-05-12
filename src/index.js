@@ -9,13 +9,15 @@ function evaluate(node) {
   return "group" in node ? logicMachine(node) : evaluateItem(node);
 }
 
+const arrayNativeOperators = new Set(["includes", "excludes"]);
+
 function evaluateItem(item) {
   const handler = handlers[item.operator];
   if (!handler) return false;
   if (item.expected === undefined) return false;
   if (item.value === undefined) return false;
 
-  if (Array.isArray(item.value)) {
+  if (Array.isArray(item.value) && !arrayNativeOperators.has(item.operator)) {
     const results = item.value.map((value) => ({
       value,
       result: handler(item.expected, value),
@@ -27,7 +29,7 @@ function evaluateItem(item) {
   return handler(item.expected, item.value);
 }
 
-const everyOperators = new Set(["eq", "excludes", "notContains"]);
+const everyOperators = new Set(["eq", "notContains"]);
 
 function defaultCombiner(operator) {
   return everyOperators.has(operator) ? everyCombiner : someCombiner;

@@ -63,29 +63,39 @@ An item compares `value` against `expected` using one of the operators below. If
 
 ### Operators
 
-| Operator      | Returns `true` when…                                  |
-| ------------- | ----------------------------------------------------- |
-| `eq`          | `value === expected`                                  |
-| `neq`         | `value !== expected`                                  |
-| `gt`          | `value > expected`                                    |
-| `gte`         | `value >= expected`                                   |
-| `lt`          | `value < expected`                                    |
-| `lte`         | `value <= expected`                                   |
-| `contains`    | `value` contains `expected` as a substring            |
-| `notContains` | `value` does not contain `expected` as a substring    |
-| `startsWith`  | `value` starts with `expected`                        |
-| `endsWith`    | `value` ends with `expected`                          |
-| `regexp`      | `value` matches `expected` (a `RegExp` or pattern)    |
-| `includes`    | `value === expected` (alias of `eq`, scalar form)     |
-| `excludes`    | `value !== expected` (alias of `neq`, scalar form)    |
+| Operator      | Returns `true` when…                                                  |
+| ------------- | --------------------------------------------------------------------- |
+| `eq`          | `value === expected`                                                  |
+| `neq`         | `value !== expected`                                                  |
+| `gt`          | `value > expected`                                                    |
+| `gte`         | `value >= expected`                                                   |
+| `lt`          | `value < expected`                                                    |
+| `lte`         | `value <= expected`                                                   |
+| `contains`    | `value` contains `expected` as a substring                            |
+| `notContains` | `value` does not contain `expected` as a substring                    |
+| `startsWith`  | `value` starts with `expected`                                        |
+| `endsWith`    | `value` ends with `expected`                                          |
+| `regexp`      | `value` matches `expected` (a `RegExp` or pattern)                    |
+| `includes`    | `expected` is an array and contains `value` (array membership)        |
+| `excludes`    | `expected` is an array and does **not** contain `value`               |
 
 `contains` and friends treat `expected` as a literal string — regex characters are not interpreted. Use `regexp` if you want pattern matching. Invalid regex patterns return `false` instead of throwing.
 
+`includes` and `excludes` flip the usual handler shape: `expected` is the *set* of values to test against, and `value` is the single item being checked. They use JS `Array.prototype.includes` (SameValueZero), which matches `NaN` but otherwise behaves like `===`. If `expected` isn't an array, both return `false`.
+
+```ts
+// "is the user's role one of these?"
+logic({
+  type: "and",
+  group: [{ operator: "includes", expected: ["admin", "owner"], value: user.role }],
+});
+```
+
 ## Array values
 
-When `value` is an array, the operator is applied element-wise. The default rule for combining the per-element results depends on the operator:
+When `value` is an array and the operator is **not** `includes` / `excludes`, the operator is applied element-wise. The default rule for combining the per-element results depends on the operator:
 
-* **Every element must match** for `eq`, `excludes`, `notContains` — i.e. "all values are X", "none of them are X", "none of them contain X".
+* **Every element must match** for `eq` and `notContains` — "all values are X", "none of them contain X".
 * **At least one element must match** for everything else.
 
 ```ts
@@ -95,10 +105,16 @@ logic({
   group: [{ operator: "eq", expected: 1, value: [1, 1, 1] }],
 }); // true
 
-// "any value equals 'abc'"
+// "any value is greater than 10"
 logic({
   type: "or",
-  group: [{ operator: "includes", expected: "abc", value: ["x", "abc", "y"] }],
+  group: [{ operator: "gt", expected: 10, value: [3, 11, 7] }],
+}); // true
+
+// array membership: "the user's role is one of the allowed roles"
+logic({
+  type: "and",
+  group: [{ operator: "includes", expected: ["user", "admin"], value: "admin" }],
 }); // true
 ```
 
@@ -136,6 +152,7 @@ import logic, { Logic, Item, Node, Operator, Result } from "logic-machine";
 
 * `Logic.type` is now required. Previously omitting it silently meant `or`.
 * Renamed operators: `contain` → `contains`, `notContain` → `notContains`, `startWith` → `startsWith`, `endWith` → `endsWith`, `include` → `includes`, `exclude` → `excludes`.
+* `includes` / `excludes` are now array-membership operators rather than scalar `eq` / `neq` aliases. They take the allowed (or disallowed) set in `expected` and the single item to test in `value`; if `expected` isn't an array, both return `false`.
 * `eq` and `neq` now use strict equality. `1 === "1"` is `false`.
 * `contains`, `notContains`, `startsWith`, `endsWith` no longer interpret regex syntax in `expected`. Use the `regexp` operator for that.
 * The `regexp` operator now accepts a `RegExp` instance (so you can pass flags) and returns `false` on invalid patterns instead of throwing.

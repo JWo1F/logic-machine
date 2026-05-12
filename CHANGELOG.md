@@ -8,6 +8,7 @@ Major rewrite. See the README's "Migrating from 1.x" section for breaking change
 
 * `Logic.type` is now required (`"and" | "or"`).
 * Renamed operators: `contain` → `contains`, `notContain` → `notContains`, `startWith` → `startsWith`, `endWith` → `endsWith`, `include` → `includes`, `exclude` → `excludes`.
+* `includes` / `excludes` are now array-membership operators: `expected` is the set of allowed/disallowed values, `value` is the single item being tested. They no longer act as scalar `eq` / `neq` aliases.
 * `eq` / `neq` now use strict equality (`===` / `!==`).
 * `contains` / `notContains` / `startsWith` / `endsWith` no longer interpret regex syntax in `expected`. Use `regexp` for patterns.
 * Default export only — the API surface is a single function.
@@ -17,7 +18,7 @@ Major rewrite. See the README's "Migrating from 1.x" section for breaking change
 * Hand-written TypeScript declarations in `dist/index.d.ts` exporting `Logic`, `Item`, `Node`, `Operator`, `Result`.
 * `regexp` accepts a `RegExp` instance and returns `false` on invalid patterns.
 * Dual ESM/CJS distribution with proper `exports` map.
-* `notContains` joins `eq` / `excludes` in using "every element matches" semantics for array values.
+* `notContains` joins `eq` in using "every element matches" semantics for array values (when applied element-wise to an array).
 * GitHub Actions CI matrix on Node 18 / 20 / 22.
 
 ### Changed

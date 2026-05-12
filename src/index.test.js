@@ -96,8 +96,6 @@ describe("scalar handlers", () => {
     ["endsWith", { expected: "world", operator: "endsWith", value: "Hello world" }],
     ["regexp string", { expected: "^abc$", operator: "regexp", value: "abc" }],
     ["regexp RegExp", { expected: /^abc$/, operator: "regexp", value: "abc" }],
-    ["includes", { expected: "a", operator: "includes", value: "a" }],
-    ["excludes", { expected: "a", operator: "excludes", value: "b" }],
   ];
 
   test.each(cases)("%s passes when satisfied", (_, item) => {
@@ -187,21 +185,6 @@ describe("array values", () => {
     ).toBe(true);
   });
 
-  test("excludes requires every element to differ", () => {
-    expect(
-      logic({
-        type: "or",
-        group: [{ expected: "abc", operator: "excludes", value: ["xx", "abc", "yy"] }],
-      }),
-    ).toBe(false);
-    expect(
-      logic({
-        type: "or",
-        group: [{ expected: "abc", operator: "excludes", value: ["xx", "yy"] }],
-      }),
-    ).toBe(true);
-  });
-
   test("notContains requires every element to not contain the substring", () => {
     expect(
       logic({
@@ -213,21 +196,6 @@ describe("array values", () => {
       logic({
         type: "and",
         group: [{ expected: "abc", operator: "notContains", value: ["foo", "xabcx"] }],
-      }),
-    ).toBe(false);
-  });
-
-  test("includes is a 'some' match across the array", () => {
-    expect(
-      logic({
-        type: "or",
-        group: [{ expected: "abc", operator: "includes", value: ["xxx", "abc", "yyy"] }],
-      }),
-    ).toBe(true);
-    expect(
-      logic({
-        type: "or",
-        group: [{ expected: "abc", operator: "includes", value: ["xxx", "yyy"] }],
       }),
     ).toBe(false);
   });
@@ -254,6 +222,91 @@ describe("array values", () => {
       { value: 1, result: true },
       { value: 3, result: false },
     ]);
+  });
+});
+
+describe("includes / excludes (array membership)", () => {
+  test("includes is true when value is a member of expected array", () => {
+    expect(
+      logic({
+        type: "and",
+        group: [{ expected: ["user", "admin", "owner"], operator: "includes", value: "admin" }],
+      }),
+    ).toBe(true);
+  });
+
+  test("includes is false when value is not a member of expected array", () => {
+    expect(
+      logic({
+        type: "and",
+        group: [{ expected: ["user", "admin"], operator: "includes", value: "guest" }],
+      }),
+    ).toBe(false);
+  });
+
+  test("excludes is true when value is not a member of expected array", () => {
+    expect(
+      logic({
+        type: "and",
+        group: [{ expected: ["banned", "pending"], operator: "excludes", value: "active" }],
+      }),
+    ).toBe(true);
+  });
+
+  test("excludes is false when value is a member of expected array", () => {
+    expect(
+      logic({
+        type: "and",
+        group: [{ expected: ["banned", "pending"], operator: "excludes", value: "banned" }],
+      }),
+    ).toBe(false);
+  });
+
+  test("includes returns false when expected is not an array", () => {
+    expect(
+      logic({
+        type: "and",
+        group: [{ expected: "admin", operator: "includes", value: "admin" }],
+      }),
+    ).toBe(false);
+  });
+
+  test("excludes returns false when expected is not an array", () => {
+    expect(
+      logic({
+        type: "and",
+        group: [{ expected: "banned", operator: "excludes", value: "active" }],
+      }),
+    ).toBe(false);
+  });
+
+  test("includes uses strict equality (no type coercion)", () => {
+    expect(
+      logic({
+        type: "and",
+        group: [{ expected: ["1", "2", "3"], operator: "includes", value: 1 }],
+      }),
+    ).toBe(false);
+  });
+
+  test("includes finds objects by reference, not by structure", () => {
+    const target = { id: 1 };
+    expect(
+      logic({
+        type: "and",
+        group: [
+          { expected: [{ id: 1 }, target, { id: 2 }], operator: "includes", value: target },
+        ],
+      }),
+    ).toBe(true);
+    expect(
+      logic({
+        type: "and",
+        group: [
+          { expected: [{ id: 1 }, { id: 2 }], operator: "includes", value: { id: 1 } },
+        ],
+      }),
+    ).toBe(false);
   });
 });
 
@@ -296,11 +349,11 @@ describe("NaN edge cases", () => {
     ).toBe(false);
   });
 
-  test("excludes against NaN is true for any non-NaN", () => {
+  test("includes finds NaN inside an array (Array.includes uses SameValueZero)", () => {
     expect(
       logic({
         type: "or",
-        group: [{ expected: NaN, operator: "excludes", value: "lalala" }],
+        group: [{ expected: [NaN, 1, 2], operator: "includes", value: NaN }],
       }),
     ).toBe(true);
   });

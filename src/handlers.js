@@ -19,8 +19,8 @@ const handlers = {
       return false;
     }
   },
-  includes: (expected, value) => value === expected,
-  excludes: (expected, value) => value !== expected,
+  includes: (expected, value) => Array.isArray(expected) && expected.includes(value),
+  excludes: (expected, value) => Array.isArray(expected) && !expected.includes(value),
 };
 
 export default handlers;
