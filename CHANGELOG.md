@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.3.0
+
+### Added
+
+* Regex literals in the DSL — `/pattern/flags` instead of `"pattern"`:
+
+  ```text
+  regexp(/^[A-Z]+$/i)
+  code:regexp(/^[A-Z]{3}$/)
+  ```
+
+  The literal is parsed into a `RegExp` instance (so flags are preserved) and passed straight to the `regexp` handler. Forward slashes inside `[…]` character classes don't need escaping; outside, use `\/`.
+
+* `stringify` now renders a `RegExp` `expected` back as `/source/flags` instead of a JSON-quoted string, so `parse(stringify(x))` roundtrips for regex-bearing rules.
+
 ## 2.2.0
 
 ### Added

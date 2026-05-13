@@ -25,8 +25,11 @@ describe("leaves", () => {
     expect(stringify({ operator: "eq", expected: null })).toBe("eq(null)");
   });
 
-  test("regex expected is rendered as its source string", () => {
-    expect(stringify({ operator: "regexp", expected: /^foo/ })).toBe('regexp("^foo")');
+  test("regex expected is rendered as a regex literal", () => {
+    expect(stringify({ operator: "regexp", expected: /^foo/ })).toBe("regexp(/^foo/)");
+    expect(stringify({ operator: "regexp", expected: /^[A-Z]+$/gim })).toBe(
+      "regexp(/^[A-Z]+$/gim)",
+    );
   });
 
   test("a field prefix is emitted when present", () => {
@@ -103,6 +106,8 @@ describe("roundtrip", () => {
     "eq(1) or eq(2) and eq(3)",
     'name:eq("Alex") and age:gte(18)',
     'role:includes("admin", "owner")',
+    "regexp(/^[A-Z]+$/gim)",
+    "name:regexp(/^A/i)",
   ];
 
   test.each(cases)("stringify(parse(%j)) === input", (src) => {

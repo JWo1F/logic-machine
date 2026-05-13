@@ -68,6 +68,6 @@ function formatLiteral(v) {
     return String(v);
   }
   if (typeof v === "string") return JSON.stringify(v);
-  if (v instanceof RegExp) return JSON.stringify(v.source);
+  if (v instanceof RegExp) return String(v); // /source/flags — JS engine handles `/` escaping
   throw new TypeError(`Cannot stringify literal of type ${typeof v}`);
 }

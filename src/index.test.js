@@ -379,6 +379,14 @@ describe("string DSL input", () => {
     expect(logic("excludes(1, 2, 3)", 2)).toBe(false);
   });
 
+  test("regex literals in the DSL are passed through to the regexp handler", () => {
+    expect(logic("regexp(/^[A-Z]+$/)", "HELLO")).toBe(true);
+    expect(logic("regexp(/^[A-Z]+$/)", "Hello")).toBe(false);
+    expect(logic("regexp(/^[A-Z]+$/i)", "hello")).toBe(true);
+    expect(logic('code:regexp(/^[A-Z]{3}$/)', { code: "ABC" })).toBe(true);
+    expect(logic('code:regexp(/^[A-Z]{3}$/)', { code: "AB" })).toBe(false);
+  });
+
   test("the README example evaluates", () => {
     // (eq(10) or includes(1, 2, 3)) and lt(20)
     expect(logic("(eq(10) or includes(1, 2, 3)) and lt(20)", 2)).toBe(true);

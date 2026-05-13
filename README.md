@@ -59,7 +59,7 @@ The grammar:
 
 - A leaf is `operator(arg, …)`, optionally prefixed with `field:`.
 - Combine leaves with `and` / `or`. `and` binds tighter; parens override.
-- Literals are numbers, single- or double-quoted strings (with JSON-style escapes), `true`, `false`, `null`.
+- Literals are numbers, single- or double-quoted strings (with JSON-style escapes), regex literals `/pattern/flags`, `true`, `false`, `null`.
 
 ```text
 (age:gte(18) and country:includes("US", "CA")) or role:eq("admin")
@@ -138,7 +138,7 @@ logic(
 | `notContains` | `value` does **not** contain `expected` as a substring     | `notContains("foo")`            |
 | `startsWith`  | `value` starts with `expected`                             | `startsWith("Mr.")`             |
 | `endsWith`    | `value` ends with `expected`                               | `endsWith(".jpg")`              |
-| `regexp`      | `value` matches `expected` (string pattern or `RegExp`)    | `regexp("^[A-Z]+$")`            |
+| `regexp`      | `value` matches `expected` (string pattern or `RegExp`)    | `regexp(/^[A-Z]+$/i)`           |
 | `includes`    | `value` is in `expected` — array membership                | `includes("admin", "owner")`    |
 | `excludes`    | `value` is **not** in `expected`                           | `excludes("banned", "pending")` |
 

@@ -120,6 +120,57 @@ describe("combinators and precedence", () => {
   });
 });
 
+describe("regex literals", () => {
+  test("a bare /pattern/ produces a RegExp expected", () => {
+    const result = parse("regexp(/^abc$/)");
+    expect(result.operator).toBe("regexp");
+    expect(result.expected).toBeInstanceOf(RegExp);
+    expect(result.expected.source).toBe("^abc$");
+    expect(result.expected.flags).toBe("");
+  });
+
+  test("flags after the closing slash", () => {
+    const { expected } = parse("regexp(/^[A-Z]+$/gim)");
+    expect(expected).toBeInstanceOf(RegExp);
+    expect(expected.source).toBe("^[A-Z]+$");
+    expect(expected.flags).toBe("gim");
+  });
+
+  test("character class can contain a forward slash", () => {
+    const { expected } = parse("regexp(/[a/b]/)");
+    expect(expected.test("a")).toBe(true);
+    expect(expected.test("/")).toBe(true);
+    expect(expected.test("c")).toBe(false);
+  });
+
+  test("escaped forward slash is honoured", () => {
+    const { expected } = parse("regexp(/a\\/b/)");
+    expect(expected.test("a/b")).toBe(true);
+  });
+
+  test("regex literals work in non-regexp operator slots", () => {
+    // eq(...) just stores the value; semantically odd but syntactically valid
+    const result = parse("eq(/abc/i)");
+    expect(result.expected).toBeInstanceOf(RegExp);
+    expect(result.expected.flags).toBe("i");
+  });
+
+  test("invalid regex pattern throws SyntaxError", () => {
+    expect(() => parse("regexp(/(/)")).toThrow(SyntaxError);
+  });
+
+  test("unterminated regex throws SyntaxError", () => {
+    expect(() => parse("regexp(/abc")).toThrow(SyntaxError);
+  });
+
+  test("can be combined with a field prefix", () => {
+    const result = parse("name:regexp(/^A/)");
+    expect(result.field).toBe("name");
+    expect(result.expected).toBeInstanceOf(RegExp);
+    expect(result.expected.source).toBe("^A");
+  });
+});
+
 describe("named fields", () => {
   test("a leaf may be prefixed with a field name", () => {
     expect(parse('name:eq("Alex")')).toEqual({

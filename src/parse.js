@@ -7,7 +7,8 @@
 //   term       := "(" expression ")" | leaf
 //   leaf       := [IDENT ":"] op-call
 //   op-call    := IDENT "(" [literal ("," literal)*] ")"
-//   literal    := NUMBER | STRING | BOOLEAN | NULL
+//   literal    := NUMBER | STRING | REGEX | BOOLEAN | NULL
+//   REGEX      := "/" body "/" flags     // body honours [..] char classes and \ escapes
 //
 // AND binds tighter than OR. Parens override.
 // A leaf may be prefixed with `field:` to read the field off the runtime
@@ -17,6 +18,7 @@ const TOK = {
   IDENT: "IDENT",
   NUMBER: "NUMBER",
   STRING: "STRING",
+  REGEX: "REGEX",
   BOOLEAN: "BOOLEAN",
   NULL: "NULL",
   AND: "AND",
@@ -45,6 +47,11 @@ function tokenize(input) {
   let buffer = "";
   let quote = null;
   let tokenStart = 0;
+  // Regex sub-state: tracks whether we're currently inside a character
+  // class so that `/` is treated as a literal there, and stores the
+  // body so we can finalise it together with the flags.
+  let inCharClass = false;
+  let regexBody = "";
 
   const push = (token) => tokens.push({ ...token, pos: tokenStart });
   const flushIdent = () => {
@@ -58,6 +65,17 @@ function tokenize(input) {
     if (Number.isNaN(n)) throw new SyntaxError(`Invalid number '${buffer}' at ${tokenStart}`);
     push({ type: TOK.NUMBER, value: n });
     buffer = "";
+  };
+  const flushRegex = () => {
+    let value;
+    try {
+      value = new RegExp(regexBody, buffer);
+    } catch (err) {
+      throw new SyntaxError(`Invalid regex at ${tokenStart}: ${err.message}`);
+    }
+    push({ type: TOK.REGEX, value });
+    buffer = "";
+    regexBody = "";
   };
 
   while (i <= input.length) {
@@ -76,6 +94,7 @@ function tokenize(input) {
         if (c === ",") { push({ type: TOK.COMMA }); i++; break; }
         if (c === ":") { push({ type: TOK.COLON }); i++; break; }
         if (c === '"' || c === "'") { state = "string"; quote = c; i++; break; }
+        if (c === "/") { state = "regex-body"; inCharClass = false; regexBody = ""; i++; break; }
         if (c === "-" || /[0-9]/.test(c)) { state = "number"; buffer = c; i++; break; }
         if (/[a-zA-Z_]/.test(c)) { state = "ident"; buffer = c; i++; break; }
         throw new SyntaxError(`Unexpected character '${c}' at ${i}`);
@@ -117,6 +136,34 @@ function tokenize(input) {
         buffer += ESCAPES[c] ?? c;
         i++;
         state = "string";
+        break;
+      }
+
+      case "regex-body": {
+        if (c === "") throw new SyntaxError(`Unterminated regex starting at ${tokenStart}`);
+        if (c === "\\") { state = "regex-escape"; i++; break; }
+        if (c === "[" && !inCharClass) { inCharClass = true; regexBody += c; i++; break; }
+        if (c === "]" && inCharClass) { inCharClass = false; regexBody += c; i++; break; }
+        if (c === "/" && !inCharClass) { state = "regex-flags"; buffer = ""; i++; break; }
+        regexBody += c;
+        i++;
+        break;
+      }
+
+      case "regex-escape": {
+        if (c === "") throw new SyntaxError(`Unterminated regex escape at ${tokenStart}`);
+        // Preserve the backslash and the next character verbatim so the
+        // RegExp constructor sees the same source the user wrote.
+        regexBody += "\\" + c;
+        i++;
+        state = "regex-body";
+        break;
+      }
+
+      case "regex-flags": {
+        if (c && /[a-z]/i.test(c)) { buffer += c; i++; break; }
+        flushRegex();
+        state = "start";
         break;
       }
     }
@@ -205,6 +252,7 @@ export default function parse(input) {
     if (
       t.type === TOK.NUMBER ||
       t.type === TOK.STRING ||
+      t.type === TOK.REGEX ||
       t.type === TOK.BOOLEAN ||
       t.type === TOK.NULL
     ) {
