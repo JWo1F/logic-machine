@@ -5,13 +5,15 @@ Tiny rules engine for JavaScript. Express a boolean rule as a string, as JSON, o
 Zero dependencies. Works in Node.js 18+, modern browsers, and edge runtimes.
 
 ```js
-import logic from "logic-machine";
+import LogicMachine from "logic-machine";
 
 // "owner can edit; an editor can edit only while their account is active"
-logic(
+const lm = new LogicMachine(
   'role:eq("owner") or (role:eq("editor") and status:eq("active"))',
-  { role: "editor", status: "active" },
-); // true
+);
+
+lm.compute({ role: "editor", status: "active" });    // true
+lm.compute({ role: "editor", status: "suspended" }); // false
 ```
 
 ## When you'd reach for this
@@ -36,226 +38,240 @@ Or include the IIFE bundle in a browser:
 ```html
 <script src="https://unpkg.com/logic-machine"></script>
 <script>
-  LogicMachine('age:gte(18)', { age: 22 }); // true
+  new LogicMachine("age:gte(18)").compute({ age: 22 }); // true
 </script>
 ```
 
-## Two ways to write a rule
+## The API in 30 seconds
 
-A rule can be a **DSL string** or a **JSON tree**. Both are first-class — pick whichever is easier to write or store. They're interchangeable; [`parse`](#parse-and-stringify) and [`stringify`](#parse-and-stringify) convert between them.
-
-### DSL strings
-
-Compact and easy to author by hand, store in a database, or hand to a non-programmer.
+`LogicMachine` is a class. Each instance owns one parsed rule plus a private handler registry that layers on top of a shared global one.
 
 ```js
-logic('age:gte(18) and country:includes("US", "CA")', {
-  age: 22,
-  country: "US",
-}); // true
+import LogicMachine from "logic-machine";
+
+// 1. One-off evaluation.
+new LogicMachine("eq(10)").compute(10);                 // true
+
+// 2. Register a built-in available to every instance.
+LogicMachine.extend({ isEven: (_, v) => v % 2 === 0 });
+
+// 3. Register a private operator on one instance.
+const lm = new LogicMachine();
+lm.extend({ domainOf: (e, v) => String(v).endsWith(`@${e}`) });
+lm.parse('email:domainOf("example.com")');
+lm.compute({ email: "alex@example.com" });              // true
+
+// 4. Strict static round-trip via the class.
+LogicMachine.parse("eq(10)");      // returns a JSON tree
+LogicMachine.stringify(tree);      // returns the DSL string
 ```
 
-The grammar:
+## Writing rules
 
-- A leaf is `operator(arg, …)`, optionally prefixed with `field:`.
-- Combine leaves with `and` / `or`. `and` binds tighter; parens override.
-- Literals are numbers, single- or double-quoted strings (with JSON-style escapes), regex literals `/pattern/flags`, `true`, `false`, `null`.
+A rule is a **DSL string** or a **JSON tree**. Both are first-class; the DSL is just a compact spelling of the tree.
+
+### DSL
 
 ```text
-(age:gte(18) and country:includes("US", "CA")) or role:eq("admin")
+expression := and-expr ("or" and-expr)*
+and-expr   := term ("and" term)*
+term       := "(" expression ")" | quantifier | op-call
+quantifier := ("every"|"some"|"none") "(" source "," expression ")"
+source     := field-name | array-literal
+op-call    := [field ":"] operator "(" literal ")"
+literal    := number | string | regex | boolean | null | array-literal
 ```
 
-### JSON trees
-
-Better when you generate or transform rules programmatically.
+* `and` binds tighter than `or`. Parens override.
+* Strings are `"…"` or `'…'` with JSON-style escapes.
+* Regex literals are `/pattern/flags`.
+* Array literals are `[1, 2, 3]`.
 
 ```js
-logic(
-  {
-    type: "or",
-    group: [
-      { field: "role", operator: "eq", expected: "owner" },
-      {
-        type: "and",
-        group: [
-          { field: "role", operator: "eq", expected: "editor" },
-          { field: "status", operator: "eq", expected: "active" },
-        ],
-      },
-    ],
-  },
-  { role: "editor", status: "active" },
-); // true
+new LogicMachine('age:gte(18) and country:includes(["US", "CA"])');
+new LogicMachine('every(scores, gte(60))');
+new LogicMachine('some(orders, status:eq("pending") or status:eq("processing"))');
+new LogicMachine('none(errors, neq(null))');
 ```
 
-A node is either a `Logic` group (`{ type: "and" | "or", group: [...] }`) or an `Item` leaf (`{ operator, expected, ... }`). They nest freely.
+### JSON
+
+Each node is either a `Logic` group, a `Quantifier`, or an `Item` leaf.
+
+```ts
+type Logic      = { type: "and" | "or"; group: Node[] };
+type Quantifier = { type: "every" | "some" | "none"; over?: string | unknown[]; match: Node };
+type Item       = { operator: string; expected: unknown; value?: unknown; field?: string };
+type Node       = Logic | Quantifier | Item;
+```
+
+```js
+new LogicMachine({
+  type: "and",
+  group: [
+    { operator: "gte", expected: 18, field: "age" },
+    { type: "every", over: "scores", match: { operator: "gte", expected: 60 } },
+  ],
+});
+```
 
 ## How values get resolved
 
-Every leaf compares some *value* against the literal `expected`. You can supply the value in any of these ways. The resolver tries them in order:
+Every leaf compares some *value* against the literal `expected`. The value comes from one of:
 
 ```js
 // 1. The runtime input itself
-logic("gte(18)", 22); // true
+new LogicMachine("gte(18)").compute(22); // true
 
-// 2. A named field on the input, DSL form
-logic("age:gte(18)", { age: 22 }); // true
+// 2. A named field on the input (DSL)
+new LogicMachine("age:gte(18)").compute({ age: 22 }); // true
 
-// 3. A named field on the input, JSON form (same as #2)
-logic({ operator: "gte", expected: 18, field: "age" }, { age: 22 }); // true
+// 3. A named field on the input (JSON)
+new LogicMachine({ operator: "gte", expected: 18, field: "age" }).compute({ age: 22 }); // true
 
 // 4. A literal baked into the rule (JSON only)
-logic({ operator: "gte", expected: 18, value: 22 }); // true
+new LogicMachine({ operator: "gte", expected: 18, value: 22 }).compute(); // true
 
-// 5. Mixed — different leaves of the same rule choose independently.
-//    Here the first leaf hard-codes its value; the second reads `age`
-//    off the runtime input.
-logic(
-  {
-    type: "and",
-    group: [
-      { operator: "eq", expected: "active", value: "active" },
-      { operator: "gte", expected: 18, field: "age" },
-    ],
-  },
-  { age: 22 },
-); // true
+// 5. Mixed — different leaves of the same rule choose independently
+new LogicMachine({
+  type: "and",
+  group: [
+    { operator: "eq", expected: "active", value: "active" },  // hard-coded
+    { operator: "gte", expected: 18, field: "age" },           // from input
+  ],
+}).compute({ age: 22 }); // true
 ```
 
-`#2` and `#3` are exactly the same rule — the DSL is just sugar over JSON. Within a single Item, `value` wins over `field`, which wins over the bare input. If nothing is set — no `value`, no `field`, no `input` — the leaf is `false`. The same goes if a `field` is missing on the input or the input isn't an object.
+The resolver tries `item.value` first, then `input[item.field]`, then `input` itself. If nothing is set, the leaf is `false`.
+
+## Quantifiers — for arrays
+
+`every` / `some` / `none` iterate a source array and apply a predicate to each element. The predicate's "input" is the current element, so nested fields and quantifiers compose naturally.
+
+```js
+// "every score is at least 60"
+new LogicMachine("every(scores, gte(60))").compute({ scores: [80, 92, 67] }); // true
+
+// "any tag is 'urgent' OR 'blocker'"
+new LogicMachine('some(tags, eq("urgent") or eq("blocker"))')
+  .compute({ tags: ["normal", "urgent"] }); // true
+
+// "no error is present"
+new LogicMachine("none(errors, neq(null))").compute({ errors: [null, null] }); // true
+
+// "every item has positive qty and reasonable price"
+new LogicMachine("every(items, qty:gt(0) and price:lt(1000))")
+  .compute({ items: [{ qty: 2, price: 50 }, { qty: 1, price: 99 }] }); // true
+
+// Literal array as source
+new LogicMachine("every([1, 1, 1], eq(1))").compute(); // true
+```
+
+Sources:
+- A **field name** — `input[name]` is the array.
+- An **array literal** — used as-is.
+- **Omitted** (JSON only, `over` left out) — iterates the input itself if it's an array.
+
+If the resolved source isn't an array, the quantifier evaluates to `false`.
 
 ## Operators
 
-| Operator      | True when                                                  | Example                         |
-| ------------- | ---------------------------------------------------------- | ------------------------------- |
-| `eq`          | `value === expected`                                       | `eq(42)`                        |
-| `neq`         | `value !== expected`                                       | `neq(0)`                        |
-| `gt`          | `value > expected`                                         | `gt(18)`                        |
-| `gte`         | `value >= expected`                                        | `gte(18)`                       |
-| `lt`          | `value < expected`                                         | `lt(100)`                       |
-| `lte`         | `value <= expected`                                        | `lte(100)`                      |
-| `contains`    | `value` contains `expected` as a literal substring         | `contains("foo")`               |
-| `notContains` | `value` does **not** contain `expected` as a substring     | `notContains("foo")`            |
-| `startsWith`  | `value` starts with `expected`                             | `startsWith("Mr.")`             |
-| `endsWith`    | `value` ends with `expected`                               | `endsWith(".jpg")`              |
-| `regexp`      | `value` matches `expected` (string pattern or `RegExp`)    | `regexp(/^[A-Z]+$/i)`           |
-| `includes`    | `value` is in `expected` — array membership                | `includes("admin", "owner")`    |
-| `excludes`    | `value` is **not** in `expected`                           | `excludes("banned", "pending")` |
+| Operator     | True when                                                  | Example                       |
+| ------------ | ---------------------------------------------------------- | ----------------------------- |
+| `eq`         | `value === expected`                                       | `eq(42)`                      |
+| `neq`        | `value !== expected`                                       | `neq(0)`                      |
+| `gt`         | `value > expected`                                         | `gt(18)`                      |
+| `gte`        | `value >= expected`                                        | `gte(18)`                     |
+| `lt`         | `value < expected`                                         | `lt(100)`                     |
+| `lte`        | `value <= expected`                                        | `lte(100)`                    |
+| `contains`   | `value` contains `expected` as a literal substring         | `contains("foo")`             |
+| `startsWith` | `value` starts with `expected`                             | `startsWith("Mr.")`           |
+| `endsWith`   | `value` ends with `expected`                               | `endsWith(".jpg")`            |
+| `regexp`     | `value` matches `expected` (string pattern or `RegExp`)    | `regexp(/^[A-Z]+$/i)`         |
+| `includes`   | `value` is in `expected` (array membership)                | `includes([1, 2, 3])`         |
+| `excludes`   | `value` is **not** in `expected`                           | `excludes(["banned"])`        |
 
-A few things worth knowing:
-
-- `eq` / `neq` are strict (`===` / `!==`). `1` and `"1"` are not equal.
-- String operators (`contains`, `startsWith`, etc.) treat `expected` as a literal — regex characters are not interpreted. Use `regexp` for patterns.
-- `regexp` accepts a `RegExp` instance (so you can pass flags) and returns `false` on invalid patterns instead of throwing.
-- `includes` / `excludes` flip the usual handler shape: `expected` is the *set*, `value` is the *item*. They use `Array.prototype.includes` (SameValueZero — matches `NaN`).
-- A value resolving to `undefined` makes the leaf `false`. No exceptions, no coercion.
-
-## Array values
-
-If the resolved value is an array and the operator is *not* `includes` / `excludes`, the operator runs against each element. The default rule for combining the per-element results depends on the operator:
-
-- **Every element must match** for `eq` and `notContains` ("none of them are X", "none of them contain X").
-- **At least one element must match** for everything else.
-
-```js
-// "any name contains 'o'"
-logic("contains('o')", ["Alex", "Bob", "Carol"]); // true
-
-// "every score equals 100"
-logic("eq(100)", [100, 100, 100]); // true
-```
-
-Override the combiner per leaf with `getValue` (JSON form):
-
-```js
-logic({
-  operator: "eq",
-  expected: 1,
-  value: [1, 1, 3],
-  getValue: (results) => results.filter((r) => r.result).length === 2,
-}); // true — exactly two elements equal 1
-
-// results: [{ value: 1, result: true }, { value: 1, result: true }, { value: 3, result: false }]
-```
+- `eq` / `neq` are strict (`===` / `!==`).
+- String operators treat `expected` as a literal — use `regexp` for patterns.
+- `regexp` accepts a `RegExp` and returns `false` on invalid patterns instead of throwing.
+- `includes` / `excludes` flip the usual handler shape: `expected` is the *set*, `value` is the *item*. They use `Array.prototype.includes` semantics (SameValueZero — matches `NaN`).
+- Need element-wise comparisons on an array? That's the quantifiers' job — `every(xs, eq(1))` instead of magic.
 
 ## Custom operators
 
-Register your own with `extend`. Registered operators work everywhere a built-in does — JSON, DSL, parse, stringify.
+Register globally with `LogicMachine.extend` or per-instance with `instance.extend`. Instance handlers shadow globals for that instance only.
 
 ```js
-import logic, { extend } from "logic-machine";
+import LogicMachine from "logic-machine";
 
-extend({
+LogicMachine.extend({
   isEven: (_, value) => Number(value) % 2 === 0,
   domainOf: (expected, value) => String(value).endsWith(`@${expected}`),
 });
 
-logic("isEven(0)", 8);                                       // true
-logic('email:domainOf("example.com")', { email: "a@x.com" });// false
+new LogicMachine("isEven(0)").compute(8);                                   // true
+new LogicMachine('email:domainOf("example.com")').compute({ email: "a@x" }); // false
 ```
 
-Names must be valid identifiers and must not collide with the DSL keywords (`and`, `or`, `true`, `false`, `null`). Built-ins can be overridden if you really want.
+Names must be valid identifiers and must not collide with DSL keywords (`and`, `or`, `every`, `some`, `none`, `true`, `false`, `null`).
 
-## Parse and stringify
+## Strict and lazy modes
 
-`parse` turns a DSL string into a JSON tree; `stringify` is the inverse. Use them to store rules in either form and convert on demand.
+`compute` throws `ReferenceError` if it encounters an unknown operator. Pass `{ strict: false }` to get `false` for that leaf instead.
 
 ```js
-import { parse, stringify } from "logic-machine";
+const lm = new LogicMachine("mystery(0) or eq(10)");
 
-parse('age:gte(18) and country:includes("US", "CA")');
-// {
-//   type: "and",
-//   group: [
-//     { operator: "gte", expected: 18, field: "age" },
-//     { operator: "includes", expected: ["US", "CA"], field: "country" },
-//   ],
-// }
-
-stringify({
-  type: "or",
-  group: [
-    { operator: "eq", expected: "owner", field: "role" },
-    { operator: "gte", expected: 18, field: "age" },
-  ],
-});
-// 'role:eq("owner") or age:gte(18)'
+lm.compute(10);                       // ReferenceError: Unknown operator 'mystery'
+lm.compute(10, { strict: false });    // true — mystery becomes `false`, eq(10) matches
 ```
 
-`parse(stringify(tree))` and `stringify(parse(rule))` roundtrip for any valid input.
+## Static vs instance
 
-Both are also reachable as `logic.parse` and `logic.stringify` if you'd rather not have multiple imports.
+| Static                       | Instance                       |
+| ---------------------------- | ------------------------------ |
+| `LogicMachine.extend({…})`   | `lm.extend({…})`               |
+| globals only                 | globals + instance handlers    |
+| `LogicMachine.parse(str)`    | `lm.parse(str)`                |
+| strict against globals       | strict against all handlers; stores tree |
+| `LogicMachine.stringify(t)`  | `lm.stringify(t?)`             |
+| strict against globals       | strict against all handlers; defaults to `lm.tree` |
+
+`new LogicMachine(source)` is intentionally permissive — it parses syntactically but doesn't validate operator names. That's so you can construct a rule that references your custom ops *before* you register them. Validation happens on `instance.parse(...)` or at `compute()` time (strict mode).
 
 ## TypeScript
 
-Hand-written declarations ship with the package. Everything is exported by name:
+Hand-written declarations ship with the package:
 
 ```ts
-import logic, {
+import LogicMachine, {
   Logic,
+  Quantifier,
   Item,
   Node,
   Operator,
   Handler,
-  Result,
+  ComputeOptions,
 } from "logic-machine";
 ```
 
-`Operator` is `BuiltinOperator | (string & {})` so the built-ins get IDE autocomplete without locking out names you register through `extend`.
+`Operator` is `BuiltinOperator | (string & {})` so built-ins get autocomplete without locking out names registered through `extend`.
 
 ## Browser
 
-The IIFE bundle exposes `window.LogicMachine` — the default function with `parse`, `stringify`, and `extend` attached as properties.
+The IIFE bundle exposes `window.LogicMachine` — the class itself.
 
 ```html
 <script src="https://unpkg.com/logic-machine"></script>
 <script>
   LogicMachine.extend({ isEven: (_, v) => v % 2 === 0 });
-  LogicMachine("age:isEven(0)", { age: 12 }); // true
+  new LogicMachine("age:isEven(0)").compute({ age: 12 }); // true
 </script>
 ```
 
 ## Development
+
+The source is plain JavaScript (ESM). The public TypeScript types live in [src/index.d.ts](./src/index.d.ts) and are copied into `dist/` at build time.
 
 ```sh
 npm install

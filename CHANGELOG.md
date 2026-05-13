@@ -1,5 +1,60 @@
 # Changelog
 
+## 3.0.0
+
+The default export is now the **`LogicMachine` class**. The implicit per-element array semantics on Items are gone; arrays are handled by explicit `every` / `some` / `none` quantifier nodes.
+
+### Breaking
+
+* **Class-based API.** `import logic from "logic-machine"` becomes `import LogicMachine from "logic-machine"`. Each instance owns one rule.
+
+  ```js
+  // before
+  logic("eq(10)", 10);
+  // after
+  new LogicMachine("eq(10)").compute(10);
+  ```
+
+* **No implicit array iteration on Items.** A leaf with an array value used to iterate element-wise, with `eq` and `notContains` defaulting to "every" and everything else to "some". That magic is gone. Use the explicit quantifier nodes:
+
+  ```js
+  // before — "every score >= 60" implicit on eq
+  logic({ operator: "eq", expected: 1, value: [1, 1, 1] });
+  // after — explicit
+  new LogicMachine({
+    type: "every",
+    over: [1, 1, 1],
+    match: { operator: "eq", expected: 1 },
+  }).compute();
+  ```
+
+* **`every` / `some` / `none` are first-class node types.** In the DSL: `every(field_or_array_literal, predicate)`. The predicate can be any sub-expression, not just a leaf.
+
+* **Array literals in the DSL.** `[1, 2, 3]` is now a literal. `includes` / `excludes` take a single array arg (`includes([1, 2, 3])`); the old variadic form (`includes(1, 2, 3)`) is gone.
+
+* **`notContains` dropped.** Express it as `none(xs, contains(x))` or as a custom operator.
+
+* **`Item.getValue` dropped.** Quantifiers cover every/some/none; very niche custom combiners now go through `extend` instead.
+
+* **Strict `compute` by default.** An unknown operator throws `ReferenceError`. Pass `{ strict: false }` to get `false` instead.
+
+* **Static-only strict variants.** `LogicMachine.parse(str)` and `LogicMachine.stringify(tree)` validate against the global registry and throw `ReferenceError` on unknown operators. The instance counterparts validate against globals + the instance's own handlers.
+
+* **CJS bundle stays dropped.** ESM in Node, IIFE in browsers (as in 2.x).
+
+### Added
+
+* `class LogicMachine`:
+  - `new LogicMachine(source?)` — DSL string, JSON tree, or empty.
+  - `lm.extend(handlers)` — register handlers on this instance; chainable.
+  - `lm.parse(source)` — parse + validate + store; chainable.
+  - `lm.compute(input?, { strict? })`
+  - `lm.stringify(tree?)` — defaults to the loaded rule.
+  - `lm.tree` — read-only view of the loaded tree.
+  - Static: `LogicMachine.extend`, `LogicMachine.parse`, `LogicMachine.stringify`.
+* `Quantifier` node type exported from the type definitions.
+* Quantifier with `over` omitted iterates the runtime input itself if it's an array (JSON form only).
+
 ## 2.3.0
 
 ### Added

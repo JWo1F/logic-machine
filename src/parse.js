@@ -1,18 +1,23 @@
-// State-machine tokenizer + recursive-descent parser for the logic-machine DSL.
+// State-machine tokenizer + recursive-descent parser for the logic-machine
+// DSL.
 //
 // Grammar:
-//   expression := or-expr
-//   or-expr    := and-expr ("or" and-expr)*
+//   expression := and-expr ("or" and-expr)*
 //   and-expr   := term ("and" term)*
-//   term       := "(" expression ")" | leaf
-//   leaf       := [IDENT ":"] op-call
-//   op-call    := IDENT "(" [literal ("," literal)*] ")"
-//   literal    := NUMBER | STRING | REGEX | BOOLEAN | NULL
+//   term       := "(" expression ")" | quantifier | op-call
+//   quantifier := ("every"|"some"|"none") "(" source "," expression ")"
+//   source     := IDENT | array-literal
+//   op-call    := [IDENT ":"] IDENT "(" [literal ("," literal)*] ")"
+//   literal    := NUMBER | STRING | REGEX | BOOLEAN | NULL | array-literal
+//   array-literal := "[" [literal ("," literal)*] "]"
 //   REGEX      := "/" body "/" flags     // body honours [..] char classes and \ escapes
 //
-// AND binds tighter than OR. Parens override.
-// A leaf may be prefixed with `field:` to read the field off the runtime
-// input object (e.g. `name:eq("Alex")` against `{ name: ... }`).
+// `and` binds tighter than `or`. Parens override. Quantifier keywords
+// (every/some/none) are not handler names; they become first-class
+// Quantifier nodes.
+//
+// The parser is purely syntactic: it does not validate that an operator
+// name is registered. That's the LogicMachine class's job.
 
 const TOK = {
   IDENT: "IDENT",
@@ -25,6 +30,8 @@ const TOK = {
   OR: "OR",
   LPAREN: "LPAREN",
   RPAREN: "RPAREN",
+  LBRACKET: "LBRACKET",
+  RBRACKET: "RBRACKET",
   COMMA: "COMMA",
   COLON: "COLON",
   EOF: "EOF",
@@ -40,6 +47,8 @@ const KEYWORDS = {
   null: { type: TOK.NULL, value: null },
 };
 
+const QUANTIFIERS = new Set(["every", "some", "none"]);
+
 function tokenize(input) {
   const tokens = [];
   let i = 0;
@@ -47,9 +56,6 @@ function tokenize(input) {
   let buffer = "";
   let quote = null;
   let tokenStart = 0;
-  // Regex sub-state: tracks whether we're currently inside a character
-  // class so that `/` is treated as a literal there, and stores the
-  // body so we can finalise it together with the flags.
   let inCharClass = false;
   let regexBody = "";
 
@@ -91,6 +97,8 @@ function tokenize(input) {
         tokenStart = i;
         if (c === "(") { push({ type: TOK.LPAREN }); i++; break; }
         if (c === ")") { push({ type: TOK.RPAREN }); i++; break; }
+        if (c === "[") { push({ type: TOK.LBRACKET }); i++; break; }
+        if (c === "]") { push({ type: TOK.RBRACKET }); i++; break; }
         if (c === ",") { push({ type: TOK.COMMA }); i++; break; }
         if (c === ":") { push({ type: TOK.COLON }); i++; break; }
         if (c === '"' || c === "'") { state = "string"; quote = c; i++; break; }
@@ -152,8 +160,6 @@ function tokenize(input) {
 
       case "regex-escape": {
         if (c === "") throw new SyntaxError(`Unterminated regex escape at ${tokenStart}`);
-        // Preserve the backslash and the next character verbatim so the
-        // RegExp constructor sees the same source the user wrote.
         regexBody += "\\" + c;
         i++;
         state = "regex-body";
@@ -218,19 +224,47 @@ export default function parse(input) {
       expect(TOK.RPAREN);
       return expr;
     }
-    return parseLeaf();
+    return parseLeafOrQuantifier();
   }
 
-  function parseLeaf() {
+  function parseLeafOrQuantifier() {
     const first = expect(TOK.IDENT);
     if (peek().type === TOK.COLON) {
+      // field-prefixed op-call: field:op(args)
       consume();
       const op = expect(TOK.IDENT);
-      const args = parseArgs();
-      return buildItem(op.value, args, first.value);
+      if (QUANTIFIERS.has(op.value)) {
+        throw new SyntaxError(
+          `Quantifier '${op.value}' cannot be field-prefixed at ${op.pos}`,
+        );
+      }
+      return buildItem(op.value, parseArgs(), first.value);
     }
-    const args = parseArgs();
-    return buildItem(first.value, args);
+    if (QUANTIFIERS.has(first.value)) {
+      return parseQuantifier(first.value);
+    }
+    return buildItem(first.value, parseArgs());
+  }
+
+  function parseQuantifier(kind) {
+    expect(TOK.LPAREN);
+    const over = parseSource();
+    expect(TOK.COMMA);
+    const match = parseOr();
+    expect(TOK.RPAREN);
+    return { type: kind, over, match };
+  }
+
+  function parseSource() {
+    const t = peek();
+    if (t.type === TOK.IDENT) {
+      consume();
+      return t.value;
+    }
+    if (t.type === TOK.LBRACKET) return parseArrayLiteral();
+    throw new SyntaxError(
+      `Expected field name or array literal at ${t.pos ?? "EOF"}`,
+    );
   }
 
   function parseArgs() {
@@ -249,6 +283,7 @@ export default function parse(input) {
 
   function parseLiteral() {
     const t = peek();
+    if (t.type === TOK.LBRACKET) return parseArrayLiteral();
     if (
       t.type === TOK.NUMBER ||
       t.type === TOK.STRING ||
@@ -262,23 +297,32 @@ export default function parse(input) {
     throw new SyntaxError(`Expected literal but got ${t.type} at ${t.pos ?? "EOF"}`);
   }
 
+  function parseArrayLiteral() {
+    expect(TOK.LBRACKET);
+    const items = [];
+    if (peek().type !== TOK.RBRACKET) {
+      items.push(parseLiteral());
+      while (peek().type === TOK.COMMA) {
+        consume();
+        items.push(parseLiteral());
+      }
+    }
+    expect(TOK.RBRACKET);
+    return items;
+  }
+
   const result = parseOr();
   expect(TOK.EOF);
   return result;
 }
 
-const variadicOperators = new Set(["includes", "excludes"]);
-
 function buildItem(operator, args, field) {
-  const expected = variadicOperators.has(operator) ? args : argsToScalar(operator, args);
-  return field === undefined ? { operator, expected } : { operator, expected, field };
-}
-
-function argsToScalar(operator, args) {
   if (args.length !== 1) {
     throw new SyntaxError(
       `Operator '${operator}' expects exactly one argument, got ${args.length}`,
     );
   }
-  return args[0];
+  return field === undefined
+    ? { operator, expected: args[0] }
+    : { operator, expected: args[0], field };
 }

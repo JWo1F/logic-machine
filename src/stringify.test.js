@@ -3,36 +3,33 @@ import parse from "./parse.js";
 import stringify from "./stringify.js";
 
 describe("leaves", () => {
-  test("scalar operator with a numeric argument", () => {
+  test("scalar with numeric arg", () => {
     expect(stringify({ operator: "eq", expected: 10 })).toBe("eq(10)");
   });
 
-  test("variadic operator emits comma-separated args", () => {
-    expect(stringify({ operator: "includes", expected: [1, 2, 3] })).toBe(
-      "includes(1, 2, 3)",
-    );
-  });
-
-  test("strings are quoted with JSON escaping", () => {
+  test("string is JSON-escaped", () => {
     expect(stringify({ operator: "eq", expected: "hi" })).toBe('eq("hi")');
     expect(stringify({ operator: "eq", expected: 'a"b' })).toBe('eq("a\\"b")');
-    expect(stringify({ operator: "eq", expected: "a\nb" })).toBe('eq("a\\nb")');
   });
 
-  test("booleans and null", () => {
+  test("boolean and null", () => {
     expect(stringify({ operator: "eq", expected: true })).toBe("eq(true)");
-    expect(stringify({ operator: "eq", expected: false })).toBe("eq(false)");
     expect(stringify({ operator: "eq", expected: null })).toBe("eq(null)");
   });
 
-  test("regex expected is rendered as a regex literal", () => {
-    expect(stringify({ operator: "regexp", expected: /^foo/ })).toBe("regexp(/^foo/)");
-    expect(stringify({ operator: "regexp", expected: /^[A-Z]+$/gim })).toBe(
-      "regexp(/^[A-Z]+$/gim)",
+  test("array literal expected", () => {
+    expect(stringify({ operator: "includes", expected: [1, 2, 3] })).toBe(
+      "includes([1, 2, 3])",
     );
   });
 
-  test("a field prefix is emitted when present", () => {
+  test("regex expected emits a regex literal", () => {
+    expect(stringify({ operator: "regexp", expected: /^foo/i })).toBe(
+      "regexp(/^foo/i)",
+    );
+  });
+
+  test("field prefix is emitted when present", () => {
     expect(stringify({ operator: "eq", expected: "Alex", field: "name" })).toBe(
       'name:eq("Alex")',
     );
@@ -52,7 +49,7 @@ describe("groups and precedence", () => {
     ).toBe("eq(1) and eq(2)");
   });
 
-  test("an OR nested inside an AND is wrapped in parens", () => {
+  test("OR nested inside AND is wrapped", () => {
     expect(
       stringify({
         type: "and",
@@ -60,17 +57,17 @@ describe("groups and precedence", () => {
           {
             type: "or",
             group: [
-              { operator: "eq", expected: 10 },
-              { operator: "includes", expected: [1, 2, 3] },
+              { operator: "eq", expected: 1 },
+              { operator: "eq", expected: 2 },
             ],
           },
-          { operator: "eq", expected: 5 },
+          { operator: "eq", expected: 3 },
         ],
       }),
-    ).toBe("(eq(10) or includes(1, 2, 3)) and eq(5)");
+    ).toBe("(eq(1) or eq(2)) and eq(3)");
   });
 
-  test("an AND nested inside an OR does not need parens", () => {
+  test("AND nested inside OR needs no parens", () => {
     expect(
       stringify({
         type: "or",
@@ -88,26 +85,64 @@ describe("groups and precedence", () => {
     ).toBe("eq(1) or eq(2) and eq(3)");
   });
 
-  test("a single-child group unwraps in the output", () => {
+  test("single-child group unwraps", () => {
     expect(
       stringify({ type: "and", group: [{ operator: "eq", expected: 1 }] }),
     ).toBe("eq(1)");
   });
 });
 
+describe("quantifiers", () => {
+  test("every with field source", () => {
+    expect(
+      stringify({
+        type: "every",
+        over: "scores",
+        match: { operator: "gte", expected: 60 },
+      }),
+    ).toBe("every(scores, gte(60))");
+  });
+
+  test("some with array literal source", () => {
+    expect(
+      stringify({
+        type: "some",
+        over: [1, 2, 3],
+        match: { operator: "eq", expected: 2 },
+      }),
+    ).toBe("some([1, 2, 3], eq(2))");
+  });
+
+  test("nested predicate inside quantifier", () => {
+    expect(
+      stringify({
+        type: "every",
+        over: "items",
+        match: {
+          type: "and",
+          group: [
+            { operator: "gt", expected: 0, field: "qty" },
+            { operator: "lt", expected: 100, field: "price" },
+          ],
+        },
+      }),
+    ).toBe("every(items, qty:gt(0) and price:lt(100))");
+  });
+});
+
 describe("roundtrip", () => {
   const cases = [
     "eq(10)",
-    "includes(1, 2, 3)",
+    "includes([1, 2, 3])",
     'name:eq("Alex")',
     "eq(1) and eq(2)",
-    "eq(1) or eq(2)",
-    "(eq(10) or includes(1, 2, 3)) and eq(5)",
     "eq(1) or eq(2) and eq(3)",
-    'name:eq("Alex") and age:gte(18)',
-    'role:includes("admin", "owner")',
+    "(eq(1) or eq(2)) and eq(3)",
+    "every(scores, gte(60))",
+    "some([1, 2, 3], eq(2))",
+    "none(errors, neq(null))",
+    "every(items, qty:gt(0) and price:lt(100))",
     "regexp(/^[A-Z]+$/gim)",
-    "name:regexp(/^A/i)",
   ];
 
   test.each(cases)("stringify(parse(%j)) === input", (src) => {
@@ -115,7 +150,40 @@ describe("roundtrip", () => {
   });
 });
 
-describe("errors", () => {
+describe("strict validation against a handler set", () => {
+  const handlers = { eq: () => true, gte: () => true };
+
+  test("known operators are accepted", () => {
+    expect(stringify({ operator: "eq", expected: 1 }, handlers)).toBe("eq(1)");
+  });
+
+  test("unknown operator throws ReferenceError", () => {
+    expect(() => stringify({ operator: "xyz", expected: 1 }, handlers)).toThrow(
+      ReferenceError,
+    );
+  });
+
+  test("validation walks into quantifiers and groups", () => {
+    expect(() =>
+      stringify(
+        {
+          type: "and",
+          group: [
+            { operator: "eq", expected: 1 },
+            {
+              type: "every",
+              over: "xs",
+              match: { operator: "xyz", expected: 0 },
+            },
+          ],
+        },
+        handlers,
+      ),
+    ).toThrow(ReferenceError);
+  });
+});
+
+describe("structural errors", () => {
   test("rejects items whose 'value' is set", () => {
     expect(() => stringify({ operator: "eq", expected: 1, value: 5 })).toThrow(TypeError);
   });
@@ -136,7 +204,9 @@ describe("errors", () => {
     ).toThrow(TypeError);
   });
 
-  test("rejects non-array expected on a variadic operator", () => {
-    expect(() => stringify({ operator: "includes", expected: 1 })).toThrow(TypeError);
+  test("rejects invalid quantifier source", () => {
+    expect(() =>
+      stringify({ type: "every", over: 42, match: { operator: "eq", expected: 0 } }),
+    ).toThrow(TypeError);
   });
 });

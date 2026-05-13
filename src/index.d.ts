@@ -6,23 +6,17 @@ export type BuiltinOperator =
   | "lt"
   | "lte"
   | "contains"
-  | "notContains"
   | "startsWith"
   | "endsWith"
   | "regexp"
   | "includes"
   | "excludes";
 
-// Built-in names give IDE autocomplete; the trailing `string & {}` keeps the
-// type open for operators registered at runtime via `extend()`.
+// Built-in names give IDE autocomplete; the trailing `string & {}` keeps
+// the type open for operators registered at runtime via `extend()`.
 export type Operator = BuiltinOperator | (string & {});
 
 export type Handler = (expected: unknown, value: unknown) => boolean;
-
-export interface Result {
-  value: unknown;
-  result: boolean;
-}
 
 export interface Item {
   operator: Operator;
@@ -31,45 +25,66 @@ export interface Item {
   value?: unknown;
   /** Field name on the runtime input object whose value to test against. */
   field?: string;
-  /** Custom combiner for when the resolved value is an array. */
-  getValue?: (results: Result[]) => boolean;
 }
 
 export interface Logic {
-  type: "or" | "and";
+  type: "and" | "or";
   group: Node[];
 }
 
-export type Node = Logic | Item;
+export interface Quantifier {
+  type: "every" | "some" | "none";
+  /** Source array: a field name on the input, a literal array, or omitted to iterate the input itself. */
+  over?: string | unknown[];
+  /** Sub-tree applied to each element of the source. */
+  match: Node;
+}
+
+export type Node = Logic | Quantifier | Item;
+
+export interface ComputeOptions {
+  /** Throw on unknown operator (default: true). When false, that leaf is `false`. */
+  strict?: boolean;
+}
 
 /**
- * Evaluate a logic tree. The tree may be a JSON object, a single leaf Item,
- * or a string in the DSL form (parsed via `parse` automatically).
+ * A logic-machine instance owns one parsed rule plus a private handler
+ * registry that layers on top of the global one. Use the static methods
+ * for one-off, strict operations.
  *
- * Resolution of an Item's tested value, in priority order:
- *   1. `item.value` if set
- *   2. `input[item.field]` if `item.field` is set
- *   3. `input` itself
+ *     LogicMachine.extend({ isEven: (_, v) => v % 2 === 0 });
  *
- *     logicMachine("eq(10)", 10)
- *     logicMachine('name:eq("Alex") or age:eq(18)', { name: "John", age: 18 })
+ *     const lm = new LogicMachine('every(scores, gte(60))');
+ *     lm.compute({ scores: [80, 92, 67] });   // true
+ *
+ *     const private_ = new LogicMachine();
+ *     private_.extend({ weird: (e, v) => v.startsWith(e) });
+ *     private_.parse('weird("Mr.")').compute("Mr. X");   // true
  */
-declare function logicMachine(logic: Logic | Item | string, input?: unknown): boolean;
+export default class LogicMachine {
+  constructor(source?: string | Node);
 
-/** Parse a DSL string into a Logic/Item tree. */
-export function parse(input: string): Logic | Item;
+  /** Register custom operators on this instance only. */
+  extend(extensions: Record<string, Handler>): this;
 
-/** Convert a Logic/Item tree into its DSL string form. */
-export function stringify(node: Logic | Item): string;
+  /** Parse a DSL string, validate against this instance's handlers, store as the rule. */
+  parse(source: string): this;
 
-/**
- * Register custom operators. Names must be valid identifiers and must not
- * collide with DSL keywords (`and`, `or`, `true`, `false`, `null`). Existing
- * operators with the same name are overwritten.
- *
- *     extend({ isEven: (_, value) => Number(value) % 2 === 0 });
- *     logicMachine("isEven(0)", 4); // true
- */
-export function extend(extensions: Record<string, Handler>): void;
+  /** Serialize the loaded rule (or the given tree) to the DSL form. */
+  stringify(tree?: Node): string;
 
-export default logicMachine;
+  /** Evaluate the loaded rule against an input. */
+  compute(input?: unknown, options?: ComputeOptions): boolean;
+
+  /** The currently loaded rule, or null. */
+  readonly tree: Node | null;
+
+  /** Register custom operators globally. */
+  static extend(extensions: Record<string, Handler>): void;
+
+  /** Parse with strict validation against the global registry only. */
+  static parse(source: string): Node;
+
+  /** Serialize with strict validation against the global registry only. */
+  static stringify(tree: Node): string;
+}

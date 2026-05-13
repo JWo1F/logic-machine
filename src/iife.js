@@ -1,4 +1,3 @@
-// Entry for the IIFE/browser bundle. Re-exports the default so the global
-// `LogicMachine` becomes the function itself (with `parse` and `stringify`
-// attached as properties), not an exports object.
+// Entry for the IIFE/browser bundle. Re-exports the LogicMachine class
+// so the global `LogicMachine` is the class itself.
 export { default } from "./index.js";

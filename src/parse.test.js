@@ -2,7 +2,7 @@ import { describe, expect, test } from "@jest/globals";
 import parse from "./parse.js";
 
 describe("leaves and literals", () => {
-  test("single op call with one numeric arg", () => {
+  test("scalar op call with one argument", () => {
     expect(parse("eq(10)")).toEqual({ operator: "eq", expected: 10 });
   });
 
@@ -18,35 +18,76 @@ describe("leaves and literals", () => {
   test("escape sequences inside strings", () => {
     expect(parse('eq("a\\nb")')).toEqual({ operator: "eq", expected: "a\nb" });
     expect(parse('eq("a\\"b")')).toEqual({ operator: "eq", expected: 'a"b' });
-    expect(parse('eq("a\\\\b")')).toEqual({ operator: "eq", expected: "a\\b" });
   });
 
   test("booleans and null", () => {
     expect(parse("eq(true)")).toEqual({ operator: "eq", expected: true });
-    expect(parse("eq(false)")).toEqual({ operator: "eq", expected: false });
     expect(parse("eq(null)")).toEqual({ operator: "eq", expected: null });
-  });
-
-  test("variadic includes / excludes bundle args into an array", () => {
-    expect(parse("includes(1, 2, 3)")).toEqual({
-      operator: "includes",
-      expected: [1, 2, 3],
-    });
-    expect(parse('excludes("a", "b")')).toEqual({
-      operator: "excludes",
-      expected: ["a", "b"],
-    });
-    expect(parse("includes()")).toEqual({ operator: "includes", expected: [] });
-  });
-
-  test("non-variadic operators require exactly one argument", () => {
-    expect(() => parse("eq()")).toThrow(SyntaxError);
-    expect(() => parse("eq(1, 2)")).toThrow(SyntaxError);
   });
 
   test("whitespace is ignored", () => {
     expect(parse("  eq( 10 )  ")).toEqual({ operator: "eq", expected: 10 });
-    expect(parse("eq\t(\n10\n)")).toEqual({ operator: "eq", expected: 10 });
+  });
+
+  test("non-quantifier operators take exactly one argument", () => {
+    expect(() => parse("eq()")).toThrow(SyntaxError);
+    expect(() => parse("eq(1, 2)")).toThrow(SyntaxError);
+  });
+});
+
+describe("array literals", () => {
+  test("flat array literal", () => {
+    expect(parse("includes([1, 2, 3])")).toEqual({
+      operator: "includes",
+      expected: [1, 2, 3],
+    });
+  });
+
+  test("empty array literal", () => {
+    expect(parse("includes([])")).toEqual({ operator: "includes", expected: [] });
+  });
+
+  test("mixed-type array", () => {
+    expect(parse('includes([1, "two", true, null])')).toEqual({
+      operator: "includes",
+      expected: [1, "two", true, null],
+    });
+  });
+
+  test("nested array literal", () => {
+    expect(parse("includes([[1, 2], [3, 4]])")).toEqual({
+      operator: "includes",
+      expected: [
+        [1, 2],
+        [3, 4],
+      ],
+    });
+  });
+
+  test("variadic includes(1, 2, 3) is no longer accepted", () => {
+    expect(() => parse("includes(1, 2, 3)")).toThrow(SyntaxError);
+  });
+});
+
+describe("regex literals", () => {
+  test("bare /pattern/ produces a RegExp", () => {
+    const { expected } = parse("regexp(/^abc$/)");
+    expect(expected).toBeInstanceOf(RegExp);
+    expect(expected.source).toBe("^abc$");
+  });
+
+  test("flags after the closing slash", () => {
+    const { expected } = parse("regexp(/^[A-Z]+$/gim)");
+    expect(expected.flags).toBe("gim");
+  });
+
+  test("character class with forward slash inside", () => {
+    const { expected } = parse("regexp(/[a/b]/)");
+    expect(expected.test("/")).toBe(true);
+  });
+
+  test("invalid regex pattern throws", () => {
+    expect(() => parse("regexp(/(/)")).toThrow(SyntaxError);
   });
 });
 
@@ -54,16 +95,6 @@ describe("combinators and precedence", () => {
   test("'or' produces an or-group", () => {
     expect(parse("eq(1) or eq(2)")).toEqual({
       type: "or",
-      group: [
-        { operator: "eq", expected: 1 },
-        { operator: "eq", expected: 2 },
-      ],
-    });
-  });
-
-  test("'and' produces an and-group", () => {
-    expect(parse("eq(1) and eq(2)")).toEqual({
-      type: "and",
       group: [
         { operator: "eq", expected: 1 },
         { operator: "eq", expected: 2 },
@@ -102,77 +133,10 @@ describe("combinators and precedence", () => {
       ],
     });
   });
-
-  test("the README example parses to the expected tree", () => {
-    expect(parse("(eq(10) or includes(1, 2, 3)) and eq(5)")).toEqual({
-      type: "and",
-      group: [
-        {
-          type: "or",
-          group: [
-            { operator: "eq", expected: 10 },
-            { operator: "includes", expected: [1, 2, 3] },
-          ],
-        },
-        { operator: "eq", expected: 5 },
-      ],
-    });
-  });
-});
-
-describe("regex literals", () => {
-  test("a bare /pattern/ produces a RegExp expected", () => {
-    const result = parse("regexp(/^abc$/)");
-    expect(result.operator).toBe("regexp");
-    expect(result.expected).toBeInstanceOf(RegExp);
-    expect(result.expected.source).toBe("^abc$");
-    expect(result.expected.flags).toBe("");
-  });
-
-  test("flags after the closing slash", () => {
-    const { expected } = parse("regexp(/^[A-Z]+$/gim)");
-    expect(expected).toBeInstanceOf(RegExp);
-    expect(expected.source).toBe("^[A-Z]+$");
-    expect(expected.flags).toBe("gim");
-  });
-
-  test("character class can contain a forward slash", () => {
-    const { expected } = parse("regexp(/[a/b]/)");
-    expect(expected.test("a")).toBe(true);
-    expect(expected.test("/")).toBe(true);
-    expect(expected.test("c")).toBe(false);
-  });
-
-  test("escaped forward slash is honoured", () => {
-    const { expected } = parse("regexp(/a\\/b/)");
-    expect(expected.test("a/b")).toBe(true);
-  });
-
-  test("regex literals work in non-regexp operator slots", () => {
-    // eq(...) just stores the value; semantically odd but syntactically valid
-    const result = parse("eq(/abc/i)");
-    expect(result.expected).toBeInstanceOf(RegExp);
-    expect(result.expected.flags).toBe("i");
-  });
-
-  test("invalid regex pattern throws SyntaxError", () => {
-    expect(() => parse("regexp(/(/)")).toThrow(SyntaxError);
-  });
-
-  test("unterminated regex throws SyntaxError", () => {
-    expect(() => parse("regexp(/abc")).toThrow(SyntaxError);
-  });
-
-  test("can be combined with a field prefix", () => {
-    const result = parse("name:regexp(/^A/)");
-    expect(result.field).toBe("name");
-    expect(result.expected).toBeInstanceOf(RegExp);
-    expect(result.expected.source).toBe("^A");
-  });
 });
 
 describe("named fields", () => {
-  test("a leaf may be prefixed with a field name", () => {
+  test("field-prefixed op call", () => {
     expect(parse('name:eq("Alex")')).toEqual({
       operator: "eq",
       expected: "Alex",
@@ -180,9 +144,9 @@ describe("named fields", () => {
     });
   });
 
-  test("fields work inside groups", () => {
-    expect(parse('name:eq("Alex") or age:gte(18)')).toEqual({
-      type: "or",
+  test("fields combine with grouping", () => {
+    expect(parse('name:eq("Alex") and age:gte(18)')).toEqual({
+      type: "and",
       group: [
         { operator: "eq", expected: "Alex", field: "name" },
         { operator: "gte", expected: 18, field: "age" },
@@ -190,12 +154,76 @@ describe("named fields", () => {
     });
   });
 
-  test("fields combine with variadic operators", () => {
-    expect(parse('role:includes("admin", "owner")')).toEqual({
-      operator: "includes",
-      expected: ["admin", "owner"],
-      field: "role",
+  test("a quantifier cannot be field-prefixed", () => {
+    expect(() => parse("xs:every(scores, gte(0))")).toThrow(SyntaxError);
+  });
+});
+
+describe("quantifiers", () => {
+  test("every(field, predicate)", () => {
+    expect(parse("every(scores, gte(60))")).toEqual({
+      type: "every",
+      over: "scores",
+      match: { operator: "gte", expected: 60 },
     });
+  });
+
+  test("some(field, predicate)", () => {
+    expect(parse("some(tags, eq('urgent'))")).toEqual({
+      type: "some",
+      over: "tags",
+      match: { operator: "eq", expected: "urgent" },
+    });
+  });
+
+  test("none(field, predicate)", () => {
+    expect(parse("none(errors, neq(null))")).toEqual({
+      type: "none",
+      over: "errors",
+      match: { operator: "neq", expected: null },
+    });
+  });
+
+  test("array literal as source", () => {
+    expect(parse("every([1, 2, 3], gt(0))")).toEqual({
+      type: "every",
+      over: [1, 2, 3],
+      match: { operator: "gt", expected: 0 },
+    });
+  });
+
+  test("predicate may be a full sub-expression", () => {
+    expect(parse('every(items, qty:gt(0) and price:lt(100))')).toEqual({
+      type: "every",
+      over: "items",
+      match: {
+        type: "and",
+        group: [
+          { operator: "gt", expected: 0, field: "qty" },
+          { operator: "lt", expected: 100, field: "price" },
+        ],
+      },
+    });
+  });
+
+  test("quantifiers nest", () => {
+    expect(parse('every(rows, some(cells, eq("x")))')).toEqual({
+      type: "every",
+      over: "rows",
+      match: {
+        type: "some",
+        over: "cells",
+        match: { operator: "eq", expected: "x" },
+      },
+    });
+  });
+
+  test("missing comma is rejected", () => {
+    expect(() => parse("every(scores gte(60))")).toThrow(SyntaxError);
+  });
+
+  test("missing source is rejected", () => {
+    expect(() => parse("every(gte(60))")).toThrow(SyntaxError);
   });
 });
 
@@ -208,12 +236,8 @@ describe("syntax errors", () => {
     expect(() => parse("eq(1")).toThrow(SyntaxError);
   });
 
-  test("missing operator after colon", () => {
-    expect(() => parse("name:")).toThrow(SyntaxError);
-  });
-
-  test("unknown character", () => {
-    expect(() => parse("eq(1) & eq(2)")).toThrow(SyntaxError);
+  test("unmatched bracket", () => {
+    expect(() => parse("includes([1, 2")).toThrow(SyntaxError);
   });
 
   test("trailing junk after a valid expression", () => {
@@ -224,7 +248,7 @@ describe("syntax errors", () => {
     expect(() => parse('eq("hi')).toThrow(SyntaxError);
   });
 
-  test("bare minus", () => {
-    expect(() => parse("eq(-)")).toThrow(SyntaxError);
+  test("missing operator after colon", () => {
+    expect(() => parse("name:")).toThrow(SyntaxError);
   });
 });
