@@ -78,12 +78,12 @@ and-expr   := term ("and" term)*
 term       := "(" expression ")" | quantifier | op-call
 quantifier := ("every"|"some"|"none") "(" source "," expression ")"
 source     := field-name | array-literal
-op-call    := [field ":"] operator "(" [literal ("," literal)*] ")"
+op-call    := [field ":"] operator [ "(" [literal ("," literal)*] ")" ]
 literal    := number | string | regex | boolean | null | array-literal
 ```
 
 * `and` binds tighter than `or`. Parens override.
-* Operators take any number of args: `isEven()`, `eq(10)`, `between(1, 10)`. Multi-arg calls reach the handler as an array.
+* Operators take any number of args: `isEven` (bare nullary), `eq(10)`, `between(1, 10)`. Multi-arg calls reach the handler as an array. Empty parens (`isEven()`) are also accepted for compatibility but the canonical form is bare.
 * Strings are `"…"` or `'…'` with JSON-style escapes.
 * Regex literals are `/pattern/flags`.
 * Array literals are `[1, 2, 3]`.
@@ -215,7 +215,7 @@ LogicMachine.extend({
   between: ([lo, hi], value) => value >= lo && value <= hi,
 });
 
-new LogicMachine("isEven()").compute(8);                                       // true
+new LogicMachine("isEven").compute(8);                                       // true
 new LogicMachine('email:domainOf("example.com")').compute({ email: "a@x" });   // false
 new LogicMachine('role:inSet("admin", "owner")').compute({ role: "admin" });   // true
 new LogicMachine("age:between(13, 19)").compute({ age: 16 });                  // true
@@ -275,7 +275,7 @@ The IIFE bundle exposes `window.LogicMachine` — the class itself.
 <script src="https://unpkg.com/logic-machine"></script>
 <script>
   LogicMachine.extend({ isEven: (_, v) => v % 2 === 0 });
-  new LogicMachine("age:isEven()").compute({ age: 12 }); // true
+  new LogicMachine("age:isEven").compute({ age: 12 }); // true
 </script>
 ```
 

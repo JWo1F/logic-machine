@@ -42,8 +42,36 @@ describe("leaves and literals", () => {
     });
   });
 
+  test("nullary calls can omit the parentheses entirely", () => {
+    expect(parse("even")).toEqual({ operator: "even" });
+    // Equivalent to the parenthesised form.
+    expect(parse("even")).toEqual(parse("even()"));
+  });
+
   test("nullary op with a field prefix", () => {
     expect(parse("age:isEven()")).toEqual({ operator: "isEven", field: "age" });
+    expect(parse("age:isEven")).toEqual({ operator: "isEven", field: "age" });
+  });
+
+  test("bare nullary composes with combinators", () => {
+    expect(parse("even and positive")).toEqual({
+      type: "and",
+      group: [{ operator: "even" }, { operator: "positive" }],
+    });
+    expect(parse("(even or odd) and isPositive")).toEqual({
+      type: "and",
+      group: [
+        {
+          type: "or",
+          group: [{ operator: "even" }, { operator: "odd" }],
+        },
+        { operator: "isPositive" },
+      ],
+    });
+  });
+
+  test("quantifier keywords without parens are still an error", () => {
+    expect(() => parse("every")).toThrow(SyntaxError);
   });
 
   test("variadic op with a field prefix", () => {

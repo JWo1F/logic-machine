@@ -7,7 +7,8 @@
 //   term       := "(" expression ")" | quantifier | op-call
 //   quantifier := ("every"|"some"|"none") "(" source "," expression ")"
 //   source     := IDENT | array-literal
-//   op-call    := [IDENT ":"] IDENT "(" [literal ("," literal)*] ")"   // 0+ args
+//   op-call    := [IDENT ":"] IDENT [ "(" [literal ("," literal)*] ")" ]
+//   // Parentheses are optional when there are zero args: `isEven` ≡ `isEven()`.
 //   literal    := NUMBER | STRING | REGEX | BOOLEAN | NULL | array-literal
 //   array-literal := "[" [literal ("," literal)*] "]"
 //   REGEX      := "/" body "/" flags     // body honours [..] char classes and \ escapes
@@ -230,7 +231,7 @@ export default function parse(input) {
   function parseLeafOrQuantifier() {
     const first = expect(TOK.IDENT);
     if (peek().type === TOK.COLON) {
-      // field-prefixed op-call: field:op(args)
+      // field-prefixed op-call: field:op[(args)]
       consume();
       const op = expect(TOK.IDENT);
       if (QUANTIFIERS.has(op.value)) {
@@ -238,12 +239,17 @@ export default function parse(input) {
           `Quantifier '${op.value}' cannot be field-prefixed at ${op.pos}`,
         );
       }
-      return buildItem(op.value, parseArgs(), first.value);
+      return buildItem(op.value, parseOptionalArgs(), first.value);
     }
     if (QUANTIFIERS.has(first.value)) {
+      // Quantifiers always require their (source, predicate) form.
       return parseQuantifier(first.value);
     }
-    return buildItem(first.value, parseArgs());
+    return buildItem(first.value, parseOptionalArgs());
+  }
+
+  function parseOptionalArgs() {
+    return peek().type === TOK.LPAREN ? parseArgs() : [];
   }
 
   function parseQuantifier(kind) {

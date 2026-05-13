@@ -198,13 +198,30 @@ describe("end-to-end realistic rules", () => {
     expect(lm.compute({ scores: [2, 3, 6] })).toBe(false);
   });
 
-  test("nullary operators are called with no arg in the DSL", () => {
+  test("nullary operators are bare in the DSL — no parens", () => {
+    const lm = new LogicMachine()
+      .extend({ isEven: (_, v) => Number(v) % 2 === 0 })
+      .parse("isEven");
+    expect(lm.compute(8)).toBe(true);
+    expect(lm.compute(7)).toBe(false);
+    expect(lm.stringify()).toBe("isEven");
+  });
+
+  test("nullary call still accepts explicit empty parens as input", () => {
     const lm = new LogicMachine()
       .extend({ isEven: (_, v) => Number(v) % 2 === 0 })
       .parse("isEven()");
     expect(lm.compute(8)).toBe(true);
+    // Stringify canonicalises to the bare form.
+    expect(lm.stringify()).toBe("isEven");
+  });
+
+  test("the user's example: `even` as a bare nullary leaf", () => {
+    const lm = new LogicMachine("even").extend({
+      even: (_, value) => Number(value) % 2 === 0,
+    });
+    expect(lm.compute(10)).toBe(true);
     expect(lm.compute(7)).toBe(false);
-    expect(lm.stringify()).toBe("isEven()");
   });
 
   test("variadic custom op — args packed into expected", () => {

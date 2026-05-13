@@ -40,9 +40,9 @@ describe("leaves", () => {
     );
   });
 
-  test("nullary op emits empty parens", () => {
-    expect(stringify({ operator: "isEven" })).toBe("isEven()");
-    expect(stringify({ operator: "isEven", field: "age" })).toBe("age:isEven()");
+  test("nullary op emits bare, without parens", () => {
+    expect(stringify({ operator: "isEven" })).toBe("isEven");
+    expect(stringify({ operator: "isEven", field: "age" })).toBe("age:isEven");
   });
 });
 
@@ -154,9 +154,9 @@ describe("roundtrip", () => {
     "none(errors, neq(null))",
     "every(items, qty:gt(0) and price:lt(100))",
     "regexp(/^[A-Z]+$/gim)",
-    "isEven()",
-    "age:isEven()",
-    "every(scores, isEven())",
+    "isEven",
+    "age:isEven",
+    "every(scores, isEven)",
     "between(1, 10)",
   ];
 
@@ -213,7 +213,7 @@ describe("structural errors", () => {
   });
 
   test("undefined expected is treated as a nullary call", () => {
-    expect(stringify({ operator: "eq", expected: undefined })).toBe("eq()");
+    expect(stringify({ operator: "eq", expected: undefined })).toBe("eq");
   });
 
   test("rejects invalid field names", () => {

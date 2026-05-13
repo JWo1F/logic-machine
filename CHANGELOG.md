@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.3.0
+
+### Added
+
+* **Bare nullary form in the DSL.** Parens are optional when there are no args:
+
+  ```js
+  lm.extend({ even: (_, v) => v % 2 === 0 });
+  new LogicMachine("even").compute(10);                  // true
+  new LogicMachine("age:even").compute({ age: 10 });     // true
+  new LogicMachine("even and positive").compute(...);    // composes naturally
+  ```
+
+  `isEven()` is still accepted as input for the same JSON, but stringify canonicalises to the bare form (`isEven` / `age:isEven`).
+
+* The quantifier keywords (`every`, `some`, `none`) still require their `(source, predicate)` form; a bare `every` is a syntax error.
+
 ## 3.2.0
 
 ### Added
