@@ -8,9 +8,7 @@ export type BuiltinOperator =
   | "contains"
   | "startsWith"
   | "endsWith"
-  | "regexp"
-  | "includes"
-  | "excludes";
+  | "regexp";
 
 // Built-in names give IDE autocomplete; the trailing `string & {}` keeps
 // the type open for operators registered at runtime via `extend()`.

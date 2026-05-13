@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.2.0
+
+### Added
+
+* **Variadic op calls in the DSL.** Operators can now be called with any number of args:
+
+  ```text
+  isEven()                     # 0 args  -> { operator: "isEven" }
+  eq(10)                       # 1 arg   -> { operator: "eq", expected: 10 }
+  between(1, 10)               # 2+ args -> { operator: "between", expected: [1, 10] }
+  inSet("admin", "owner")      # variadic
+  ```
+
+  Handlers keep the same `(expected, value) => boolean` shape — for a multi-arg call, `expected` is the array.
+
+### Removed
+
+* **`includes` / `excludes` built-ins.** The flipped handler shape (`expected` as the *set*, `value` as the *item*) was the last weird case in the API. Replacements:
+
+  ```text
+  # "data array contains X"        →  quantifier
+  tags:includes("urgent")         →  some(tags, eq("urgent"))
+
+  # "value is one of these"        →  disjunction (small) or custom op
+  role:includes(["admin","owner"]) →  role:eq("admin") or role:eq("owner")
+                                  or:  lm.extend({ inSet: (set, v) => set.includes(v) });
+                                       role:inSet("admin", "owner")
+  ```
+
+### Changed
+
+* `stringify` emits multi-arg form (`op(a, b, c)`) for arrays of length ≥ 2, keeping the bracket form (`op([42])`, `op([])`) for length 0 and 1 so a single-element array stays distinguishable from a scalar.
+
 ## 3.1.0
 
 ### Added

@@ -21,8 +21,6 @@ const builtins = {
       return false;
     }
   },
-  includes: (expected, value) => Array.isArray(expected) && expected.includes(value),
-  excludes: (expected, value) => Array.isArray(expected) && !expected.includes(value),
 };
 
 // Names users can never register: parser keywords and the quantifier node

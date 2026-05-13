@@ -17,10 +17,15 @@ describe("leaves", () => {
     expect(stringify({ operator: "eq", expected: null })).toBe("eq(null)");
   });
 
-  test("array literal expected", () => {
-    expect(stringify({ operator: "includes", expected: [1, 2, 3] })).toBe(
-      "includes([1, 2, 3])",
+  test("array expected of length >= 2 emits as multi-arg", () => {
+    expect(stringify({ operator: "inSet", expected: [1, 2, 3] })).toBe(
+      "inSet(1, 2, 3)",
     );
+  });
+
+  test("single-element and empty arrays keep the bracket form", () => {
+    expect(stringify({ operator: "inSet", expected: [42] })).toBe("inSet([42])");
+    expect(stringify({ operator: "inSet", expected: [] })).toBe("inSet([])");
   });
 
   test("regex expected emits a regex literal", () => {
@@ -138,7 +143,8 @@ describe("quantifiers", () => {
 describe("roundtrip", () => {
   const cases = [
     "eq(10)",
-    "includes([1, 2, 3])",
+    "inSet(1, 2, 3)",
+    "inSet([1])",
     'name:eq("Alex")',
     "eq(1) and eq(2)",
     "eq(1) or eq(2) and eq(3)",
@@ -151,6 +157,7 @@ describe("roundtrip", () => {
     "isEven()",
     "age:isEven()",
     "every(scores, isEven())",
+    "between(1, 10)",
   ];
 
   test.each(cases)("stringify(parse(%j)) === input", (src) => {

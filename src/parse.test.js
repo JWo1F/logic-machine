@@ -29,38 +29,54 @@ describe("leaves and literals", () => {
     expect(parse("  eq( 10 )  ")).toEqual({ operator: "eq", expected: 10 });
   });
 
-  test("non-quantifier operators take 0 or 1 arguments", () => {
+  test("operators take zero, one, or many arguments", () => {
     expect(parse("isEven()")).toEqual({ operator: "isEven" });
-    expect(() => parse("eq(1, 2)")).toThrow(SyntaxError);
+    expect(parse("eq(1)")).toEqual({ operator: "eq", expected: 1 });
+    expect(parse("between(1, 10)")).toEqual({
+      operator: "between",
+      expected: [1, 10],
+    });
+    expect(parse("inSet(1, 2, 3, 4)")).toEqual({
+      operator: "inSet",
+      expected: [1, 2, 3, 4],
+    });
   });
 
   test("nullary op with a field prefix", () => {
     expect(parse("age:isEven()")).toEqual({ operator: "isEven", field: "age" });
   });
+
+  test("variadic op with a field prefix", () => {
+    expect(parse('role:inSet("admin", "owner")')).toEqual({
+      operator: "inSet",
+      expected: ["admin", "owner"],
+      field: "role",
+    });
+  });
 });
 
 describe("array literals", () => {
-  test("flat array literal", () => {
-    expect(parse("includes([1, 2, 3])")).toEqual({
-      operator: "includes",
+  test("flat array literal as a single arg", () => {
+    expect(parse("inSet([1, 2, 3])")).toEqual({
+      operator: "inSet",
       expected: [1, 2, 3],
     });
   });
 
   test("empty array literal", () => {
-    expect(parse("includes([])")).toEqual({ operator: "includes", expected: [] });
+    expect(parse("inSet([])")).toEqual({ operator: "inSet", expected: [] });
   });
 
   test("mixed-type array", () => {
-    expect(parse('includes([1, "two", true, null])')).toEqual({
-      operator: "includes",
+    expect(parse('inSet([1, "two", true, null])')).toEqual({
+      operator: "inSet",
       expected: [1, "two", true, null],
     });
   });
 
   test("nested array literal", () => {
-    expect(parse("includes([[1, 2], [3, 4]])")).toEqual({
-      operator: "includes",
+    expect(parse("inSet([[1, 2], [3, 4]])")).toEqual({
+      operator: "inSet",
       expected: [
         [1, 2],
         [3, 4],
@@ -68,8 +84,11 @@ describe("array literals", () => {
     });
   });
 
-  test("variadic includes(1, 2, 3) is no longer accepted", () => {
-    expect(() => parse("includes(1, 2, 3)")).toThrow(SyntaxError);
+  test("multi-arg op call packs args into the expected array", () => {
+    expect(parse("inSet(1, 2, 3)")).toEqual({
+      operator: "inSet",
+      expected: [1, 2, 3],
+    });
   });
 });
 

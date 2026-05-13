@@ -7,7 +7,7 @@
 //   term       := "(" expression ")" | quantifier | op-call
 //   quantifier := ("every"|"some"|"none") "(" source "," expression ")"
 //   source     := IDENT | array-literal
-//   op-call    := [IDENT ":"] IDENT "(" [literal] ")"   // arg optional for nullary ops
+//   op-call    := [IDENT ":"] IDENT "(" [literal ("," literal)*] ")"   // 0+ args
 //   literal    := NUMBER | STRING | REGEX | BOOLEAN | NULL | array-literal
 //   array-literal := "[" [literal ("," literal)*] "]"
 //   REGEX      := "/" body "/" flags     // body honours [..] char classes and \ escapes
@@ -317,13 +317,9 @@ export default function parse(input) {
 }
 
 function buildItem(operator, args, field) {
-  if (args.length > 1) {
-    throw new SyntaxError(
-      `Operator '${operator}' expects 0 or 1 arguments, got ${args.length}`,
-    );
-  }
   const item = { operator };
   if (args.length === 1) item.expected = args[0];
+  else if (args.length > 1) item.expected = args;
   if (field !== undefined) item.field = field;
   return item;
 }

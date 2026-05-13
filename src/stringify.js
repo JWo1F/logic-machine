@@ -62,13 +62,23 @@ function formatItem(item, handlers) {
       "Cannot stringify an Item with a literal 'value' — the DSL has no syntax for it",
     );
   }
-  const args = item.expected === undefined ? "" : formatLiteral(item.expected);
-  const call = `${item.operator}(${args})`;
+  const call = `${item.operator}(${formatItemArgs(item.expected)})`;
   if (item.field === undefined) return call;
   if (!FIELD_RE.test(item.field)) {
     throw new TypeError(`Field '${item.field}' is not a valid identifier`);
   }
   return `${item.field}:${call}`;
+}
+
+function formatItemArgs(expected) {
+  if (expected === undefined) return "";
+  // Arrays of 2+ elements emit as multi-arg `a, b, c`. Length 0 and 1
+  // stay as array literals so they round-trip distinct from a nullary
+  // call or a scalar value.
+  if (Array.isArray(expected) && expected.length >= 2) {
+    return expected.map(formatLiteral).join(", ");
+  }
+  return formatLiteral(expected);
 }
 
 function formatLiteral(v) {

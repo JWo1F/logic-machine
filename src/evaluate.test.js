@@ -33,11 +33,13 @@ describe("scalar handlers", () => {
     expect(run({ operator: "regexp", expected: "(", value: "abc" })).toBe(false);
   });
 
-  test("includes / excludes are array-membership scalars", () => {
-    expect(run({ operator: "includes", expected: [1, 2, 3], value: 2 })).toBe(true);
-    expect(run({ operator: "includes", expected: [1, 2, 3], value: 5 })).toBe(false);
-    expect(run({ operator: "excludes", expected: [1, 2, 3], value: 5 })).toBe(true);
-    expect(run({ operator: "excludes", expected: [1, 2, 3], value: 2 })).toBe(false);
+  test("variadic custom op: handler receives expected as an array", () => {
+    const local = {
+      ...builtins,
+      between: (expected, value) => value >= expected[0] && value <= expected[1],
+    };
+    expect(evaluate({ operator: "between", expected: [1, 10], value: 5 }, undefined, local, true)).toBe(true);
+    expect(evaluate({ operator: "between", expected: [1, 10], value: 11 }, undefined, local, true)).toBe(false);
   });
 
   test("array value to a non-iterating operator yields false (no element-wise magic)", () => {

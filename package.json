@@ -1,6 +1,6 @@
 {
   "name": "logic-machine",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "A small, dependency-free logic evaluator for JavaScript.",
   "type": "module",
   "main": "./dist/index.mjs",

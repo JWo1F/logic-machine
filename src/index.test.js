@@ -206,4 +206,24 @@ describe("end-to-end realistic rules", () => {
     expect(lm.compute(7)).toBe(false);
     expect(lm.stringify()).toBe("isEven()");
   });
+
+  test("variadic custom op — args packed into expected", () => {
+    const lm = new LogicMachine().extend({
+      mystery: (expected, value) =>
+        expected[0] > 1 && expected[1] > 1 && expected[2] > value,
+    });
+    lm.parse("mystery(1, 2, 3)");
+    expect(lm.compute(2)).toBe(false); // expected[0]=1 fails
+    lm.parse("mystery(2, 3, 5)");
+    expect(lm.compute(2)).toBe(true);
+    expect(lm.stringify()).toBe("mystery(2, 3, 5)");
+  });
+
+  test("`inSet` reimplements the dropped `includes` as a one-liner", () => {
+    const lm = new LogicMachine()
+      .extend({ inSet: (set, value) => set.includes(value) })
+      .parse('role:inSet("admin", "owner")');
+    expect(lm.compute({ role: "admin" })).toBe(true);
+    expect(lm.compute({ role: "guest" })).toBe(false);
+  });
 });

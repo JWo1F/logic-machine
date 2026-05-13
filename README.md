@@ -78,18 +78,18 @@ and-expr   := term ("and" term)*
 term       := "(" expression ")" | quantifier | op-call
 quantifier := ("every"|"some"|"none") "(" source "," expression ")"
 source     := field-name | array-literal
-op-call    := [field ":"] operator "(" literal ")"
+op-call    := [field ":"] operator "(" [literal ("," literal)*] ")"
 literal    := number | string | regex | boolean | null | array-literal
 ```
 
 * `and` binds tighter than `or`. Parens override.
-* Operators take 0 or 1 args: `eq(10)` for binary checks, `isEven()` for nullary ones.
+* Operators take any number of args: `isEven()`, `eq(10)`, `between(1, 10)`. Multi-arg calls reach the handler as an array.
 * Strings are `"…"` or `'…'` with JSON-style escapes.
 * Regex literals are `/pattern/flags`.
 * Array literals are `[1, 2, 3]`.
 
 ```js
-new LogicMachine('age:gte(18) and country:includes(["US", "CA"])');
+new LogicMachine('age:gte(18) and (country:eq("US") or country:eq("CA"))');
 new LogicMachine('every(scores, gte(60))');
 new LogicMachine('some(orders, status:eq("pending") or status:eq("processing"))');
 new LogicMachine('none(errors, neq(null))');
@@ -177,26 +177,26 @@ If the resolved source isn't an array, the quantifier evaluates to `false`.
 
 ## Operators
 
-| Operator     | True when                                                  | Example                       |
-| ------------ | ---------------------------------------------------------- | ----------------------------- |
-| `eq`         | `value === expected`                                       | `eq(42)`                      |
-| `neq`        | `value !== expected`                                       | `neq(0)`                      |
-| `gt`         | `value > expected`                                         | `gt(18)`                      |
-| `gte`        | `value >= expected`                                        | `gte(18)`                     |
-| `lt`         | `value < expected`                                         | `lt(100)`                     |
-| `lte`        | `value <= expected`                                        | `lte(100)`                    |
-| `contains`   | `value` contains `expected` as a literal substring         | `contains("foo")`             |
-| `startsWith` | `value` starts with `expected`                             | `startsWith("Mr.")`           |
-| `endsWith`   | `value` ends with `expected`                               | `endsWith(".jpg")`            |
-| `regexp`     | `value` matches `expected` (string pattern or `RegExp`)    | `regexp(/^[A-Z]+$/i)`         |
-| `includes`   | `value` is in `expected` (array membership)                | `includes([1, 2, 3])`         |
-| `excludes`   | `value` is **not** in `expected`                           | `excludes(["banned"])`        |
+| Operator     | True when                                                  | Example               |
+| ------------ | ---------------------------------------------------------- | --------------------- |
+| `eq`         | `value === expected`                                       | `eq(42)`              |
+| `neq`        | `value !== expected`                                       | `neq(0)`              |
+| `gt`         | `value > expected`                                         | `gt(18)`              |
+| `gte`        | `value >= expected`                                        | `gte(18)`             |
+| `lt`         | `value < expected`                                         | `lt(100)`             |
+| `lte`        | `value <= expected`                                        | `lte(100)`            |
+| `contains`   | `value` contains `expected` as a literal substring         | `contains("foo")`     |
+| `startsWith` | `value` starts with `expected`                             | `startsWith("Mr.")`   |
+| `endsWith`   | `value` ends with `expected`                               | `endsWith(".jpg")`    |
+| `regexp`     | `value` matches `expected` (string pattern or `RegExp`)    | `regexp(/^[A-Z]+$/i)` |
+
+Every handler has the same shape — `(expected, value) => boolean`. `expected` is the constant from the rule, `value` is the runtime data.
 
 - `eq` / `neq` are strict (`===` / `!==`).
 - String operators treat `expected` as a literal — use `regexp` for patterns.
 - `regexp` accepts a `RegExp` and returns `false` on invalid patterns instead of throwing.
-- `includes` / `excludes` flip the usual handler shape: `expected` is the *set*, `value` is the *item*. They use `Array.prototype.includes` semantics (SameValueZero — matches `NaN`).
-- Need element-wise comparisons on an array? That's the quantifiers' job — `every(xs, eq(1))` instead of magic.
+- Need to check "is the data array contains X"? Use `some(field, eq(x))`.
+- Need to check "is the value one of these"? Use `or` (small sets) or a one-line custom op (larger sets) — see [Custom operators](#custom-operators).
 
 ## Custom operators
 
@@ -206,13 +206,22 @@ Register globally with `LogicMachine.extend` or per-instance with `instance.exte
 import LogicMachine from "logic-machine";
 
 LogicMachine.extend({
+  // nullary — ignores `expected`
   isEven: (_, value) => Number(value) % 2 === 0,
+  // binary
   domainOf: (expected, value) => String(value).endsWith(`@${expected}`),
+  // variadic — `expected` is an array when the DSL call passes 2+ args
+  inSet: (set, value) => set.includes(value),
+  between: ([lo, hi], value) => value >= lo && value <= hi,
 });
 
-new LogicMachine("isEven()").compute(8);                                   // true
-new LogicMachine('email:domainOf("example.com")').compute({ email: "a@x" }); // false
+new LogicMachine("isEven()").compute(8);                                       // true
+new LogicMachine('email:domainOf("example.com")').compute({ email: "a@x" });   // false
+new LogicMachine('role:inSet("admin", "owner")').compute({ role: "admin" });   // true
+new LogicMachine("age:between(13, 19)").compute({ age: 16 });                  // true
 ```
+
+Handlers always have the shape `(expected, value) => boolean`. For a multi-arg DSL call like `op(a, b, c)`, `expected` is the array `[a, b, c]`. For a one-arg call, it's that single value. For a nullary call, it's `undefined`.
 
 Names must be valid identifiers and must not collide with DSL keywords (`and`, `or`, `every`, `some`, `none`, `true`, `false`, `null`).
 
