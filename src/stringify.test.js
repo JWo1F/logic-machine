@@ -34,6 +34,11 @@ describe("leaves", () => {
       'name:eq("Alex")',
     );
   });
+
+  test("nullary op emits empty parens", () => {
+    expect(stringify({ operator: "isEven" })).toBe("isEven()");
+    expect(stringify({ operator: "isEven", field: "age" })).toBe("age:isEven()");
+  });
 });
 
 describe("groups and precedence", () => {
@@ -143,6 +148,9 @@ describe("roundtrip", () => {
     "none(errors, neq(null))",
     "every(items, qty:gt(0) and price:lt(100))",
     "regexp(/^[A-Z]+$/gim)",
+    "isEven()",
+    "age:isEven()",
+    "every(scores, isEven())",
   ];
 
   test.each(cases)("stringify(parse(%j)) === input", (src) => {
@@ -194,8 +202,11 @@ describe("structural errors", () => {
 
   test("rejects unstringifiable literals", () => {
     expect(() => stringify({ operator: "eq", expected: { obj: 1 } })).toThrow(TypeError);
-    expect(() => stringify({ operator: "eq", expected: undefined })).toThrow(TypeError);
     expect(() => stringify({ operator: "eq", expected: Infinity })).toThrow(TypeError);
+  });
+
+  test("undefined expected is treated as a nullary call", () => {
+    expect(stringify({ operator: "eq", expected: undefined })).toBe("eq()");
   });
 
   test("rejects invalid field names", () => {

@@ -62,7 +62,8 @@ function formatItem(item, handlers) {
       "Cannot stringify an Item with a literal 'value' — the DSL has no syntax for it",
     );
   }
-  const call = `${item.operator}(${formatLiteral(item.expected)})`;
+  const args = item.expected === undefined ? "" : formatLiteral(item.expected);
+  const call = `${item.operator}(${args})`;
   if (item.field === undefined) return call;
   if (!FIELD_RE.test(item.field)) {
     throw new TypeError(`Field '${item.field}' is not a valid identifier`);

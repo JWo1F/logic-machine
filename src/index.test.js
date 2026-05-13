@@ -193,8 +193,17 @@ describe("end-to-end realistic rules", () => {
     const lm = new LogicMachine().extend({
       isEven: (_, v) => Number(v) % 2 === 0,
     });
-    lm.parse("every(scores, isEven(0))");
+    lm.parse("every(scores, isEven())");
     expect(lm.compute({ scores: [2, 4, 6] })).toBe(true);
     expect(lm.compute({ scores: [2, 3, 6] })).toBe(false);
+  });
+
+  test("nullary operators are called with no arg in the DSL", () => {
+    const lm = new LogicMachine()
+      .extend({ isEven: (_, v) => Number(v) % 2 === 0 })
+      .parse("isEven()");
+    expect(lm.compute(8)).toBe(true);
+    expect(lm.compute(7)).toBe(false);
+    expect(lm.stringify()).toBe("isEven()");
   });
 });

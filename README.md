@@ -83,6 +83,7 @@ literal    := number | string | regex | boolean | null | array-literal
 ```
 
 * `and` binds tighter than `or`. Parens override.
+* Operators take 0 or 1 args: `eq(10)` for binary checks, `isEven()` for nullary ones.
 * Strings are `"…"` or `'…'` with JSON-style escapes.
 * Regex literals are `/pattern/flags`.
 * Array literals are `[1, 2, 3]`.
@@ -209,7 +210,7 @@ LogicMachine.extend({
   domainOf: (expected, value) => String(value).endsWith(`@${expected}`),
 });
 
-new LogicMachine("isEven(0)").compute(8);                                   // true
+new LogicMachine("isEven()").compute(8);                                   // true
 new LogicMachine('email:domainOf("example.com")').compute({ email: "a@x" }); // false
 ```
 
@@ -265,7 +266,7 @@ The IIFE bundle exposes `window.LogicMachine` — the class itself.
 <script src="https://unpkg.com/logic-machine"></script>
 <script>
   LogicMachine.extend({ isEven: (_, v) => v % 2 === 0 });
-  new LogicMachine("age:isEven(0)").compute({ age: 12 }); // true
+  new LogicMachine("age:isEven()").compute({ age: 12 }); // true
 </script>
 ```
 

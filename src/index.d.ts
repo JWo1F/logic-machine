@@ -20,7 +20,8 @@ export type Handler = (expected: unknown, value: unknown) => boolean;
 
 export interface Item {
   operator: Operator;
-  expected: unknown;
+  /** Operand for the operator. Omit for nullary ops (e.g. `isEven()`). */
+  expected?: unknown;
   /** Literal value to test. If omitted, the runtime input is used (optionally via `field`). */
   value?: unknown;
   /** Field name on the runtime input object whose value to test against. */

@@ -45,6 +45,23 @@ describe("scalar handlers", () => {
     // wrap with every/some/none.
     expect(run({ operator: "eq", expected: 1, value: [1, 1, 1] })).toBe(false);
   });
+
+  test("nullary operator: handler is called with undefined expected", () => {
+    const localHandlers = {
+      ...builtins,
+      isEven: (_, value) => Number(value) % 2 === 0,
+    };
+    expect(
+      evaluate({ operator: "isEven", value: 4 }, undefined, localHandlers, true),
+    ).toBe(true);
+    expect(
+      evaluate({ operator: "isEven", value: 5 }, undefined, localHandlers, true),
+    ).toBe(false);
+    // Reads from input when no value is set
+    expect(
+      evaluate({ operator: "isEven", field: "n" }, { n: 8 }, localHandlers, true),
+    ).toBe(true);
+  });
 });
 
 describe("value resolution", () => {

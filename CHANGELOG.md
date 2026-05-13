@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.1.0
+
+### Added
+
+* **Nullary operators.** Items no longer require `expected`. Calls like `isEven()` now parse and evaluate; the handler receives `undefined` as its first argument.
+
+  ```js
+  LogicMachine.extend({ isEven: (_, v) => Number(v) % 2 === 0 });
+  new LogicMachine("isEven()").compute(8);                  // true
+  new LogicMachine("every(scores, isEven())").compute({ scores: [2, 4, 6] }); // true
+  ```
+
+  In JSON, omit `expected`: `{ operator: "isEven", field: "age" }`.
+
+### Changed
+
+* The evaluator's `expected === undefined → false` guard is removed. Built-in operators are well-behaved for the omitted-expected case (`eq()` always false, `gt()` always false, etc.); user handlers that ignore `expected` now work naturally.
+* `Item.expected` is now optional in the TypeScript definitions.
+
 ## 3.0.0
 
 The default export is now the **`LogicMachine` class**. The implicit per-element array semantics on Items are gone; arrays are handled by explicit `every` / `some` / `none` quantifier nodes.

@@ -29,9 +29,13 @@ describe("leaves and literals", () => {
     expect(parse("  eq( 10 )  ")).toEqual({ operator: "eq", expected: 10 });
   });
 
-  test("non-quantifier operators take exactly one argument", () => {
-    expect(() => parse("eq()")).toThrow(SyntaxError);
+  test("non-quantifier operators take 0 or 1 arguments", () => {
+    expect(parse("isEven()")).toEqual({ operator: "isEven" });
     expect(() => parse("eq(1, 2)")).toThrow(SyntaxError);
+  });
+
+  test("nullary op with a field prefix", () => {
+    expect(parse("age:isEven()")).toEqual({ operator: "isEven", field: "age" });
   });
 });
 

@@ -63,11 +63,12 @@ function evaluateItem(item, input, handlers, strict) {
     }
     return false;
   }
-  if (item.expected === undefined) return false;
 
   const value = resolveValue(item, input);
   if (value === undefined) return false;
 
+  // Nullary operators (no `expected`) get undefined as the first arg.
+  // Handlers that care about `expected` should fail or no-op naturally.
   return handler(item.expected, value);
 }
 
